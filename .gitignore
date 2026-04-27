@@ -1,0 +1,16 @@
+node_modules/
+.next/
+coverage/
+.vercel/
+
+.env*
+!.env.example
+
+*.log
+.DS_Store
+
+# TypeScript incremental build cache (regenerated on every typecheck)
+tsconfig.tsbuildinfo
+
+# Claude Code agent harness local state (per-machine, do not commit)
+.claude/
