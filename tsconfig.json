@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "incremental": true,
+    "jsx": "preserve",
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
+  },
+  "include": [
+    "*.config.ts",
+    "*.ts",
+    "app/**/*",
+    "lib/**/*",
+    "tests/**/*",
+    "vitest.workspace.ts",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
