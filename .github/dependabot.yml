@@ -1,0 +1,20 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # mcp-handler and @modelcontextprotocol/sdk are ABI-coupled per
+      # CLAUDE.md §4 — bump them as a pair to avoid peer-dep breakage.
+      mcp:
+        patterns:
+          - "mcp-handler"
+          - "@modelcontextprotocol/sdk"
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
