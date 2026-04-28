@@ -15,12 +15,14 @@
 // tokens this tradeoff is acceptable (plan §2, OQ-1).
 
 import { timingSafeEqual } from "node:crypto";
+import type { AuthInfo as SdkAuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { env } from "./env.js";
 
-export type AuthInfo = {
-  clientId: string;
-  scopes: readonly string[];
-};
+// Re-export the SDK's AuthInfo type. `withMcpAuth` consumes this exact shape:
+// `token` (the validated bearer string), `clientId`, and `scopes: string[]`.
+// We reuse the SDK type rather than redeclare so an SDK upgrade that widens
+// or narrows the contract surfaces here as a compile error.
+export type AuthInfo = SdkAuthInfo;
 
 export function verifyToken(_req: Request, bearerToken: string | undefined): AuthInfo | undefined {
   if (!bearerToken) return undefined;
@@ -30,5 +32,9 @@ export function verifyToken(_req: Request, bearerToken: string | undefined): Aut
   const b = Buffer.from(expected);
   if (a.length !== b.length) return undefined; // length-oracle defense
   if (!timingSafeEqual(a, b)) return undefined;
-  return { clientId: "shared-secret", scopes: ["openai:chat"] };
+  // `token` echoes the validated bearer back to the SDK so downstream
+  // request handlers can attribute calls without re-parsing the header.
+  // CLAUDE.md §4 forbids logging the token — `req.auth.token` is in-process
+  // state only and is never serialized into a response or log line.
+  return { token: bearerToken, clientId: "shared-secret", scopes: ["openai:chat"] };
 }
