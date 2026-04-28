@@ -17,7 +17,7 @@ jobs:
       OPENAI_API_KEY: ci-dummy-openai-key
       RELAY_AUTH_TOKEN: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: pnpm/action-setup@v6
 
