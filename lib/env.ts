@@ -26,7 +26,7 @@ const csvList = (defaults: readonly string[]) =>
     .refine((arr) => arr.length > 0, "must contain at least one entry");
 
 const envSchema = z.object({
-  OPENAI_API_KEY: z.string().min(1),
+  OPENAI_API_KEY: z.string().default(""),
   RELAY_AUTH_TOKEN: z
     .string()
     .refine((s) => Buffer.byteLength(s, "utf8") >= 32, "must be at least 32 bytes"),

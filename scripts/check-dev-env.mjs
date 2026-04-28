@@ -8,7 +8,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const ENV_PATH = resolve(process.cwd(), ".env.local");
-const REQUIRED = ["OPENAI_API_KEY", "RELAY_AUTH_TOKEN"];
+const REQUIRED = ["RELAY_AUTH_TOKEN"];
 
 function fail(lines) {
   for (const line of lines) console.error(line);
@@ -21,7 +21,7 @@ if (!existsSync(ENV_PATH)) {
     "[mcp-openai-relay] .env.local is missing.",
     "",
     "  cp .env.example .env.local",
-    "  # then set OPENAI_API_KEY and RELAY_AUTH_TOKEN",
+    "  # then set RELAY_AUTH_TOKEN (required) and OPENAI_API_KEY (optional)",
     "  # token: openssl rand -hex 32",
     "",
   ]);
