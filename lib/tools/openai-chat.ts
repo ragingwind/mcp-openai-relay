@@ -136,9 +136,17 @@ function mapOpenAIError(err: unknown): MappedError {
 // --- handler --------------------------------------------------------------
 
 export async function openaiChatHandler(
-  input: OpenaiChatInput,
+  rawInput: unknown,
   extra: { signal?: AbortSignal } = {},
 ): Promise<OpenaiChatResult> {
+  // Defensive validation. In production the mcp-handler runtime parses
+  // the request against `inputSchema` before invoking the handler, but we
+  // re-parse here so the handler is also safe to call directly (tests and
+  // any future direct-call paths). zod errors propagate to the caller —
+  // they are not caught and re-mapped to `bad_request`, because schema
+  // violations are caller bugs, not upstream errors.
+  const input: OpenaiChatInput = inputSchema.parse(rawInput);
+
   // Local AbortController so we can both observe the caller's signal and
   // reuse the abort path inside the iterator if needed in the future.
   const ac = new AbortController();
