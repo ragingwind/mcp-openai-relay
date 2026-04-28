@@ -20,7 +20,7 @@
     "verify": "node scripts/verify.mjs"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.29.0",
+    "@modelcontextprotocol/sdk": "1.26.0",
     "mcp-handler": "^1.1.0",
     "next": "^16.2.4",
     "openai": "^6.0.0",
@@ -28,7 +28,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",
-    "@types/node": "^25.6.0",
+    "@types/node": "^20.0.0",
     "@types/react": "19.2.14",
     "msw": "^2.0.0",
     "typescript": "^6.0.3",
