@@ -25,18 +25,31 @@ import { createMcpHandler, withMcpAuth } from "mcp-handler";
 import { verifyToken } from "../../../lib/auth.js";
 import { openaiChatTool } from "../../../lib/tools/openai-chat.js";
 
-const handler = createMcpHandler((server) => {
-  // `server.tool(name, description, paramsSchema, cb)` — the schema parameter
-  // is the Zod RawShape (i.e. `inputSchema.shape`), not the full Zod object.
-  // mcp-handler reconstructs the schema internally; passing the shape is the
-  // documented signature in @modelcontextprotocol/sdk's McpServer.
-  server.tool(
-    openaiChatTool.name,
-    openaiChatTool.description,
-    openaiChatTool.inputSchema.shape,
-    (args, extra) => openaiChatTool.handler(args, extra),
-  );
-});
+const handler = createMcpHandler(
+  (server) => {
+    // `server.tool(name, description, paramsSchema, cb)` — the schema
+    // parameter is the Zod RawShape (i.e. `inputSchema.shape`), not the full
+    // Zod object. mcp-handler reconstructs the schema internally; passing
+    // the shape is the documented signature in @modelcontextprotocol/sdk's
+    // McpServer.
+    server.tool(
+      openaiChatTool.name,
+      openaiChatTool.description,
+      openaiChatTool.inputSchema.shape,
+      (args, extra) => openaiChatTool.handler(args, extra),
+    );
+  },
+  {},
+  {
+    // Our route is `app/api/[transport]/route.ts` so Next maps the URL
+    // pathname to `/api/<transport>` (e.g. `/api/mcp`). Without `basePath`,
+    // mcp-handler compares against `/mcp` only and rejects every request
+    // with "url not matched". Setting `basePath: "/api"` derives
+    // `/api/mcp`, `/api/sse`, and `/api/message` — matching what Next.js
+    // serves.
+    basePath: "/api",
+  },
+);
 
 const wrapped = withMcpAuth(handler, verifyToken, {
   required: true,
