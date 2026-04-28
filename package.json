@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:vercel": "vercel dev",
-    "build": "next build",
+    "build": "OPENAI_API_KEY=\"${OPENAI_API_KEY:-build-dummy}\" RELAY_AUTH_TOKEN=\"${RELAY_AUTH_TOKEN:-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx}\" next build",
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",
     "test": "vitest run --passWithNoTests",

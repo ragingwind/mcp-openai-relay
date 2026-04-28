@@ -75,10 +75,17 @@ describe("verifyToken — timing-safe comparison & invariants", () => {
     expect(verifyToken(fakeReq, oneOff)).toBeUndefined();
   });
 
-  // B7: exact match → success shape
+  // B7: exact match → success shape. The `token` field echoes the validated
+  // bearer back to the SDK (per @modelcontextprotocol/sdk's AuthInfo
+  // contract — `withMcpAuth` consumes this exact shape and exposes it on
+  // `req.auth`); CLAUDE.md §4 forbids logging it externally.
   it("P1: returns AuthInfo on exact match", () => {
     const result = verifyToken(fakeReq, EXPECTED);
-    expect(result).toEqual({ clientId: "shared-secret", scopes: ["openai:chat"] });
+    expect(result).toEqual({
+      token: EXPECTED,
+      clientId: "shared-secret",
+      scopes: ["openai:chat"],
+    });
   });
 
   // B8: scopes invariant (length === 1 && scopes[0] === "openai:chat")
