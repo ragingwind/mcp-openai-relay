@@ -130,10 +130,12 @@ Principle: **mock only the OpenAI HTTP boundary** (MSW). Never mock the `openai`
 - Conventional commits (per global `core.md`).
 - The commit message body must start with an uppercase letter.
 - Do not append "Generated with Claude Code" / "Co-Authored-By" footers (per the global rule).
+- Use the [PR template](./.github/PULL_REQUEST_TEMPLATE.md) — it is auto-applied by GitHub on PR creation.
 - The PR body must include:
   - Change summary (the why)
   - Output of `pnpm build && pnpm typecheck && pnpm lint && pnpm test`
-  - Steps performed to verify manually with MCP Inspector (record them in writing — there is no UI)
+  - **MCP Inspector verification result** — tick C1–C6 in the PR template per [`doc/QA-MCP-INSPECTOR.md`](./doc/QA-MCP-INSPECTOR.md). For docs-only / CI-config-only PRs, mark the section N/A with a one-line reason.
+  - **v1 non-goal self-check** — tick the eight non-goal boxes in the PR template (auto-prevents scope creep into the v2 backlog).
 
 ---
 
