@@ -9,11 +9,11 @@ importers:
   .:
     dependencies:
       '@modelcontextprotocol/sdk':
-        specifier: 1.29.0
-        version: 1.29.0(zod@4.3.6)
+        specifier: 1.26.0
+        version: 1.26.0(zod@4.3.6)
       mcp-handler:
         specifier: ^1.1.0
-        version: 1.1.0(@modelcontextprotocol/sdk@1.29.0(zod@4.3.6))(next@16.2.4(react-dom@19.2.5(react@19.2.5))(react@19.2.5))
+        version: 1.1.0(@modelcontextprotocol/sdk@1.26.0(zod@4.3.6))(next@16.2.4(react-dom@19.2.5(react@19.2.5))(react@19.2.5))
       next:
         specifier: ^16.2.4
         version: 16.2.4(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -28,20 +28,20 @@ importers:
         specifier: ^2.0.0
         version: 2.4.13
       '@types/node':
-        specifier: ^25.6.0
-        version: 25.6.0
+        specifier: ^20.0.0
+        version: 20.19.39
       '@types/react':
         specifier: 19.2.14
         version: 19.2.14
       msw:
         specifier: ^2.0.0
-        version: 2.13.6(@types/node@25.6.0)(typescript@6.0.3)
+        version: 2.13.6(@types/node@20.19.39)(typescript@6.0.3)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
       vitest:
         specifier: ^2.0.0
-        version: 2.1.9(@types/node@25.6.0)(msw@2.13.6(@types/node@25.6.0)(typescript@6.0.3))
+        version: 2.1.9(@types/node@20.19.39)(msw@2.13.6(@types/node@20.19.39)(typescript@6.0.3))
 
 packages:
 
@@ -420,8 +420,8 @@ packages:
   '@jridgewell/sourcemap-codec@1.5.5':
     resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
 
-  '@modelcontextprotocol/sdk@1.29.0':
-    resolution: {integrity: sha512-zo37mZA9hJWpULgkRpowewez1y6ML5GsXJPY8FI0tBBCd77HEvza4jDqRKOXgHNn867PVGCyTdzqpz0izu5ZjQ==}
+  '@modelcontextprotocol/sdk@1.26.0':
+    resolution: {integrity: sha512-Y5RmPncpiDtTXDbLKswIJzTqu2hyBKxTNsgKqKclDbhIgg1wgtf1fRuvxgTnRfcnxtvvgbIEcqUOzZrJ6iSReg==}
     engines: {node: '>=18'}
     peerDependencies:
       '@cfworker/json-schema': ^4.1.1
@@ -657,8 +657,8 @@ packages:
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
 
-  '@types/node@25.6.0':
-    resolution: {integrity: sha512-+qIYRKdNYJwY3vRCZMdJbPLJAtGjQBudzZzdzwQYkEPQd+PJGixUL5QfvCLDaULoLv+RhT3LDkwEfKaAkgSmNQ==}
+  '@types/node@20.19.39':
+    resolution: {integrity: sha512-orrrD74MBUyK8jOAD/r0+lfa1I2MO6I+vAkmAWzMYbCcgrN4lCrmK52gRFQq/JRxfYPfonkr4b0jcY7Olqdqbw==}
 
   '@types/react@19.2.14':
     resolution: {integrity: sha512-ilcTH/UniCkMdtexkoCN0bI7pMcJDvmQFPvuPvmEaYA/NSfFTAgdUSLAoVjaRJm7+6PvcM+q1zYOwS4wTYMF9w==}
@@ -1376,8 +1376,8 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
-  undici-types@7.19.2:
-    resolution: {integrity: sha512-qYVnV5OEm2AW8cJMCpdV20CDyaN3g0AjDlOGf1OW4iaDEx8MwdtChUp4zu4H0VP3nDRF/8RKWH+IPp9uW0YGZg==}
+  undici-types@6.21.0:
+    resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
 
   unpipe@1.0.0:
     resolution: {integrity: sha512-pjy2bYhSsufwWlKwPc+l3cN7+wuJlK6uz0YdJEOlQDbl6jo/YlPi4mb8agUkVC8BF7V8NuzeyPNqRksA3hztKQ==}
@@ -1705,34 +1705,34 @@ snapshots:
 
   '@inquirer/ansi@2.0.5': {}
 
-  '@inquirer/confirm@6.0.12(@types/node@25.6.0)':
+  '@inquirer/confirm@6.0.12(@types/node@20.19.39)':
     dependencies:
-      '@inquirer/core': 11.1.9(@types/node@25.6.0)
-      '@inquirer/type': 4.0.5(@types/node@25.6.0)
+      '@inquirer/core': 11.1.9(@types/node@20.19.39)
+      '@inquirer/type': 4.0.5(@types/node@20.19.39)
     optionalDependencies:
-      '@types/node': 25.6.0
+      '@types/node': 20.19.39
 
-  '@inquirer/core@11.1.9(@types/node@25.6.0)':
+  '@inquirer/core@11.1.9(@types/node@20.19.39)':
     dependencies:
       '@inquirer/ansi': 2.0.5
       '@inquirer/figures': 2.0.5
-      '@inquirer/type': 4.0.5(@types/node@25.6.0)
+      '@inquirer/type': 4.0.5(@types/node@20.19.39)
       cli-width: 4.1.0
       fast-wrap-ansi: 0.2.0
       mute-stream: 3.0.0
       signal-exit: 4.1.0
     optionalDependencies:
-      '@types/node': 25.6.0
+      '@types/node': 20.19.39
 
   '@inquirer/figures@2.0.5': {}
 
-  '@inquirer/type@4.0.5(@types/node@25.6.0)':
+  '@inquirer/type@4.0.5(@types/node@20.19.39)':
     optionalDependencies:
-      '@types/node': 25.6.0
+      '@types/node': 20.19.39
 
   '@jridgewell/sourcemap-codec@1.5.5': {}
 
-  '@modelcontextprotocol/sdk@1.29.0(zod@4.3.6)':
+  '@modelcontextprotocol/sdk@1.26.0(zod@4.3.6)':
     dependencies:
       '@hono/node-server': 1.19.14(hono@4.12.15)
       ajv: 8.20.0
@@ -1907,9 +1907,9 @@ snapshots:
 
   '@types/estree@1.0.8': {}
 
-  '@types/node@25.6.0':
+  '@types/node@20.19.39':
     dependencies:
-      undici-types: 7.19.2
+      undici-types: 6.21.0
 
   '@types/react@19.2.14':
     dependencies:
@@ -1917,7 +1917,7 @@ snapshots:
 
   '@types/set-cookie-parser@2.4.10':
     dependencies:
-      '@types/node': 25.6.0
+      '@types/node': 20.19.39
 
   '@types/statuses@2.0.6': {}
 
@@ -1928,14 +1928,14 @@ snapshots:
       chai: 5.3.3
       tinyrainbow: 1.2.0
 
-  '@vitest/mocker@2.1.9(msw@2.13.6(@types/node@25.6.0)(typescript@6.0.3))(vite@5.4.21(@types/node@25.6.0))':
+  '@vitest/mocker@2.1.9(msw@2.13.6(@types/node@20.19.39)(typescript@6.0.3))(vite@5.4.21(@types/node@20.19.39))':
     dependencies:
       '@vitest/spy': 2.1.9
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      msw: 2.13.6(@types/node@25.6.0)(typescript@6.0.3)
-      vite: 5.4.21(@types/node@25.6.0)
+      msw: 2.13.6(@types/node@20.19.39)(typescript@6.0.3)
+      vite: 5.4.21(@types/node@20.19.39)
 
   '@vitest/pretty-format@2.1.9':
     dependencies:
@@ -2301,9 +2301,9 @@ snapshots:
 
   math-intrinsics@1.1.0: {}
 
-  mcp-handler@1.1.0(@modelcontextprotocol/sdk@1.29.0(zod@4.3.6))(next@16.2.4(react-dom@19.2.5(react@19.2.5))(react@19.2.5)):
+  mcp-handler@1.1.0(@modelcontextprotocol/sdk@1.26.0(zod@4.3.6))(next@16.2.4(react-dom@19.2.5(react@19.2.5))(react@19.2.5)):
     dependencies:
-      '@modelcontextprotocol/sdk': 1.29.0(zod@4.3.6)
+      '@modelcontextprotocol/sdk': 1.26.0(zod@4.3.6)
       chalk: 5.6.2
       commander: 11.1.0
       redis: 4.7.1
@@ -2322,9 +2322,9 @@ snapshots:
 
   ms@2.1.3: {}
 
-  msw@2.13.6(@types/node@25.6.0)(typescript@6.0.3):
+  msw@2.13.6(@types/node@20.19.39)(typescript@6.0.3):
     dependencies:
-      '@inquirer/confirm': 6.0.12(@types/node@25.6.0)
+      '@inquirer/confirm': 6.0.12(@types/node@20.19.39)
       '@mswjs/interceptors': 0.41.6
       '@open-draft/deferred-promise': 3.0.0
       '@types/statuses': 2.0.6
@@ -2673,7 +2673,7 @@ snapshots:
 
   typescript@6.0.3: {}
 
-  undici-types@7.19.2: {}
+  undici-types@6.21.0: {}
 
   unpipe@1.0.0: {}
 
@@ -2681,13 +2681,13 @@ snapshots:
 
   vary@1.1.2: {}
 
-  vite-node@2.1.9(@types/node@25.6.0):
+  vite-node@2.1.9(@types/node@20.19.39):
     dependencies:
       cac: 6.7.14
       debug: 4.4.3
       es-module-lexer: 1.7.0
       pathe: 1.1.2
-      vite: 5.4.21(@types/node@25.6.0)
+      vite: 5.4.21(@types/node@20.19.39)
     transitivePeerDependencies:
       - '@types/node'
       - less
@@ -2699,19 +2699,19 @@ snapshots:
       - supports-color
       - terser
 
-  vite@5.4.21(@types/node@25.6.0):
+  vite@5.4.21(@types/node@20.19.39):
     dependencies:
       esbuild: 0.21.5
       postcss: 8.5.12
       rollup: 4.60.2
     optionalDependencies:
-      '@types/node': 25.6.0
+      '@types/node': 20.19.39
       fsevents: 2.3.3
 
-  vitest@2.1.9(@types/node@25.6.0)(msw@2.13.6(@types/node@25.6.0)(typescript@6.0.3)):
+  vitest@2.1.9(@types/node@20.19.39)(msw@2.13.6(@types/node@20.19.39)(typescript@6.0.3)):
     dependencies:
       '@vitest/expect': 2.1.9
-      '@vitest/mocker': 2.1.9(msw@2.13.6(@types/node@25.6.0)(typescript@6.0.3))(vite@5.4.21(@types/node@25.6.0))
+      '@vitest/mocker': 2.1.9(msw@2.13.6(@types/node@20.19.39)(typescript@6.0.3))(vite@5.4.21(@types/node@20.19.39))
       '@vitest/pretty-format': 2.1.9
       '@vitest/runner': 2.1.9
       '@vitest/snapshot': 2.1.9
@@ -2727,11 +2727,11 @@ snapshots:
       tinyexec: 0.3.2
       tinypool: 1.1.1
       tinyrainbow: 1.2.0
-      vite: 5.4.21(@types/node@25.6.0)
-      vite-node: 2.1.9(@types/node@25.6.0)
+      vite: 5.4.21(@types/node@20.19.39)
+      vite-node: 2.1.9(@types/node@20.19.39)
       why-is-node-running: 2.3.0
     optionalDependencies:
-      '@types/node': 25.6.0
+      '@types/node': 20.19.39
     transitivePeerDependencies:
       - less
       - lightningcss
