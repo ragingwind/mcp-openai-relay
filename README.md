@@ -53,14 +53,20 @@ When the browser opens:
 
 ### Vercel deployment
 
+Quick path:
+
 ```bash
 vercel link
-vercel env add OPENAI_API_KEY    # mark as Sensitive
-vercel env add RELAY_AUTH_TOKEN  # mark as Sensitive
+vercel env add OPENAI_API_KEY    production --sensitive
+vercel env add RELAY_AUTH_TOKEN  production --sensitive
 vercel deploy --prod
 ```
 
 After deployment the URL will be `https://<your-project>.vercel.app/api/mcp`.
+
+> **Full runbook**: See [`doc/DEPLOY.md`](./doc/DEPLOY.md) for the complete procedure
+> covering Production/Preview separation, OpenAI hard usage cap (v1's only cost defense),
+> token rotation, first-deploy verification, and troubleshooting.
 
 ---
 
