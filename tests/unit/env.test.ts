@@ -20,10 +20,10 @@ const expectThrow = (input: EnvSource): Error => {
 };
 
 describe("parseEnv — required keys", () => {
-  // B1: OPENAI_API_KEY missing
-  it("throws when OPENAI_API_KEY is missing", () => {
-    const err = expectThrow({ RELAY_AUTH_TOKEN: "x".repeat(32) });
-    expect(err.message).toContain("OPENAI_API_KEY");
+  // B1: OPENAI_API_KEY missing → defaults to empty string
+  it("defaults OPENAI_API_KEY to empty string when missing", () => {
+    const env = parseEnv({ RELAY_AUTH_TOKEN: "x".repeat(32) });
+    expect(env.OPENAI_API_KEY).toBe("");
   });
 
   // B2: RELAY_AUTH_TOKEN missing
@@ -32,10 +32,10 @@ describe("parseEnv — required keys", () => {
     expect(err.message).toContain("RELAY_AUTH_TOKEN");
   });
 
-  // B3: empty OPENAI_API_KEY
-  it("throws when OPENAI_API_KEY is empty string", () => {
-    const err = expectThrow({ OPENAI_API_KEY: "", RELAY_AUTH_TOKEN: "x".repeat(32) });
-    expect(err.message).toContain("OPENAI_API_KEY");
+  // B3: empty OPENAI_API_KEY is accepted
+  it("accepts empty OPENAI_API_KEY", () => {
+    const env = parseEnv({ OPENAI_API_KEY: "", RELAY_AUTH_TOKEN: "x".repeat(32) });
+    expect(env.OPENAI_API_KEY).toBe("");
   });
 
   // B4: RELAY_AUTH_TOKEN under 32 bytes
