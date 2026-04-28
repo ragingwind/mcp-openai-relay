@@ -34,22 +34,29 @@ LLM can call OpenAI models as if they were tools.
 pnpm install
 cp .env.example .env.local
 # Fill in OPENAI_API_KEY and RELAY_AUTH_TOKEN in .env.local
+#   token: openssl rand -hex 32
 pnpm dev
 ```
 
-The server listens at `http://localhost:3000/api/mcp`.
+The server listens at `http://localhost:3000/api/mcp`. `pnpm dev` refuses to
+start (with actionable instructions) when `.env.local` is missing or the two
+required values are not set.
 
-### Verify with MCP Inspector
+### Verify the running server
+
+In a second terminal — while `pnpm dev` is running:
 
 ```bash
-npx @modelcontextprotocol/inspector
+pnpm verify
 ```
 
-When the browser opens:
-1. Transport: **Streamable HTTP**
-2. URL: `http://localhost:3000/api/mcp`
-3. Header: `Authorization: Bearer <RELAY_AUTH_TOKEN>`
-4. Click **Connect** → in the Tools tab, invoke `openai_chat`
+This sends JSON-RPC directly to `/api/mcp` and reports PASS/FAIL for the four
+checks that can be asserted from a client (C1 `tools/list`, C2 happy path,
+C3 model allowlist, C5 wrong-bearer 401). It calls OpenAI once with
+`gpt-4o-mini` (~$0.0001 per run). Override with `--url=` or `MCP_URL`.
+
+For the full six-scenario manual procedure (including C4 clamp and C6
+cancellation), see [`doc/QA-MCP-INSPECTOR.md`](./doc/QA-MCP-INSPECTOR.md).
 
 ### Vercel deployment
 
@@ -130,7 +137,7 @@ Response: accumulated text plus `usage` metadata. For the full schema see [`doc/
 ## Scripts
 
 ```bash
-pnpm dev                 # next dev (port 3000)
+pnpm dev                 # next dev (port 3000) — preflights .env.local
 pnpm dev:vercel          # vercel dev (verifies runtime parity)
 pnpm build               # next build
 pnpm typecheck           # tsc --noEmit
@@ -138,6 +145,7 @@ pnpm lint                # biome check .
 pnpm test                # vitest run
 pnpm test:unit           # unit tests only
 pnpm test:integration    # integration tests only
+pnpm verify              # smoke C1/C2/C3/C5 against a running pnpm dev
 ```
 
 ---
