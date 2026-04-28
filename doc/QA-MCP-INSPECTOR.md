@@ -13,6 +13,29 @@ end-to-end verification against a real OpenAI API call.
 
 ---
 
+## Quick path: `pnpm verify`
+
+For a fast local check against a running `pnpm dev`:
+
+```bash
+# terminal 1
+pnpm dev
+
+# terminal 2
+pnpm verify
+```
+
+`pnpm verify` sends JSON-RPC directly to `/api/mcp` and reports PASS/FAIL for
+**C1, C2, C3, and C5** — the four scenarios assertable from a client. It also
+prints an evidence-record block ready to paste into the PR. Costs ~$0.0001 per
+run (one `gpt-4o-mini` call). Override with `--url=...` or `MCP_URL`.
+
+C4 (clamp) and C6 (cancellation) cannot be asserted from a client — for those
+two, fall through to the manual six-scenario procedure below. Production-side
+re-verification (§E) is also manual: this script is local-only.
+
+---
+
 ## A. Preparation
 
 1. Populate `.env.local` with **a personal dev OpenAI key** (not the production key)

@@ -7,14 +7,17 @@
     "node": ">=20.0.0 <21.0.0"
   },
   "scripts": {
+    "predev": "node scripts/check-dev-env.mjs",
     "dev": "next dev",
+    "predev:vercel": "node scripts/check-dev-env.mjs",
     "dev:vercel": "vercel dev",
     "build": "OPENAI_API_KEY=\"${OPENAI_API_KEY:-build-dummy}\" RELAY_AUTH_TOKEN=\"${RELAY_AUTH_TOKEN:-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx}\" next build",
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",
     "test": "vitest run --passWithNoTests",
     "test:unit": "vitest run --project unit --passWithNoTests",
-    "test:integration": "vitest run --project integration --passWithNoTests"
+    "test:integration": "vitest run --project integration --passWithNoTests",
+    "verify": "node scripts/verify.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.26.0",
