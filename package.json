@@ -20,7 +20,7 @@
     "verify": "node scripts/verify.mjs"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.26.0",
+    "@modelcontextprotocol/sdk": "1.29.0",
     "mcp-handler": "^1.1.0",
     "next": "^16.2.4",
     "openai": "^6.0.0",
