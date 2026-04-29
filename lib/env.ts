@@ -10,27 +10,15 @@
 
 import { z } from "zod";
 
-const DEFAULT_MODEL_ALLOWLIST = ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini", "gpt-4.1"] as const;
-
-const csvList = (defaults: readonly string[]) =>
-  z
-    .string()
-    .optional()
-    .default(defaults.join(","))
-    .transform((csv) =>
-      csv
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
-    )
-    .refine((arr) => arr.length > 0, "must contain at least one entry");
-
 const envSchema = z.object({
   OPENAI_API_KEY: z.string().default(""),
+  OPENAI_BASE_URL: z.preprocess(
+    (v) => (typeof v === "string" && v.trim().length === 0 ? undefined : v),
+    z.string().url().optional(),
+  ),
   RELAY_AUTH_TOKEN: z
     .string()
     .refine((s) => Buffer.byteLength(s, "utf8") >= 32, "must be at least 32 bytes"),
-  MODEL_ALLOWLIST: csvList(DEFAULT_MODEL_ALLOWLIST),
   MAX_OUTPUT_TOKENS_CEILING: z.coerce.number().int().positive().default(4096),
   REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
 });

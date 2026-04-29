@@ -1,4 +1,4 @@
-// Unit tests for `lib/tools/openai-chat.ts` — covers all 25 behaviors from
+// Unit tests for `lib/tools/completion-chat.ts` — covers all 25 behaviors from
 // plan §6 (B1-B25). Single file; 5 describe blocks per the plan layout.
 //
 // Test infrastructure:
@@ -9,8 +9,8 @@
 //   • SSE responses are emitted as `text/event-stream` ReadableStreams so the
 //     SDK's async-iterator path runs exactly as it would against OpenAI proper.
 //   • `tests/setup-env.ts` (workspace setupFiles) seeds OPENAI_API_KEY +
-//     RELAY_AUTH_TOKEN BEFORE `lib/env.ts` parses, so MODEL_ALLOWLIST and
-//     MAX_OUTPUT_TOKENS_CEILING fall back to defaults (4096 ceiling).
+//     RELAY_AUTH_TOKEN BEFORE `lib/env.ts` parses, so MAX_OUTPUT_TOKENS_CEILING
+//     falls back to its default (4096 ceiling).
 //
 // Secret-leakage guard (B25): `assertNoSecretLeak(result)` MUST be called on
 // every result to assert that neither OPENAI_API_KEY nor RELAY_AUTH_TOKEN
@@ -22,10 +22,10 @@ import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { env } from "../../lib/env.js";
 import type {
-  openaiChatHandler as OpenaiChatHandlerType,
-  OpenaiChatResult,
-  openaiChatTool as OpenaiChatToolType,
-} from "../../lib/tools/openai-chat.js";
+  completionChatHandler as CompletionChatHandlerType,
+  CompletionChatResult,
+  completionChatTool as CompletionChatToolType,
+} from "../../lib/tools/completion-chat.js";
 
 // --- shared MSW server lifecycle -----------------------------------------
 //
@@ -41,17 +41,17 @@ import type {
 // are dynamically imported. By the time `new OpenAI({...})` runs and
 // captures fetch, MSW has already monkey-patched globalThis.fetch.
 const server = setupServer();
-let openaiChatHandler: typeof OpenaiChatHandlerType;
-let openaiChatTool: typeof OpenaiChatToolType;
+let completionChatHandler: typeof CompletionChatHandlerType;
+let completionChatTool: typeof CompletionChatToolType;
 
 beforeAll(async () => {
   server.listen({ onUnhandledRequest: "error" });
   // Dynamic import AFTER MSW is listening so the SDK constructor captures
   // the MSW-patched fetch reference. Otherwise every test in this file
   // hits the real api.openai.com and surfaces real 401 errors.
-  const mod = await import("../../lib/tools/openai-chat.js");
-  openaiChatHandler = mod.openaiChatHandler;
-  openaiChatTool = mod.openaiChatTool;
+  const mod = await import("../../lib/tools/completion-chat.js");
+  completionChatHandler = mod.completionChatHandler;
+  completionChatTool = mod.completionChatTool;
 });
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
@@ -92,7 +92,7 @@ function sseResponse(chunks: string[]) {
  * Pretty-print a result and assert that neither OPENAI_API_KEY nor
  * RELAY_AUTH_TOKEN appears anywhere in it. Plan §6 B25.
  */
-function assertNoSecretLeak(result: OpenaiChatResult | unknown): void {
+function assertNoSecretLeak(result: CompletionChatResult | unknown): void {
   const serialized = JSON.stringify(result);
   expect(serialized).not.toContain(env.OPENAI_API_KEY);
   expect(serialized).not.toContain(env.RELAY_AUTH_TOKEN);
@@ -101,7 +101,7 @@ function assertNoSecretLeak(result: OpenaiChatResult | unknown): void {
 const VALID_MODEL = "gpt-4o-mini";
 const VALID_MESSAGES = [{ role: "user" as const, content: "say hi" }];
 
-// `openaiChatHandler` accepts `unknown` and validates via zod internally,
+// `completionChatHandler` accepts `unknown` and validates via zod internally,
 // so tests can pass arbitrary shapes without TS casts. Negative cases
 // rely on `inputSchema.parse()` throwing inside the handler (the throw
 // propagates because schema-violation is a CALLER bug, not an upstream
@@ -111,26 +111,26 @@ const VALID_MESSAGES = [{ role: "user" as const, content: "say hi" }];
 // A: Input Validation (B1-B6)
 // =========================================================================
 
-describe("openai_chat — input validation (.strict, types, ranges)", () => {
+describe("completion_chat — input validation (.strict, types, ranges)", () => {
   // B1
   it("D1: rejects when `model` is missing", async () => {
-    await expect(openaiChatHandler({ messages: VALID_MESSAGES })).rejects.toThrow();
+    await expect(completionChatHandler({ messages: VALID_MESSAGES })).rejects.toThrow();
   });
 
   // B2
   it("D2: rejects when `messages` is missing", async () => {
-    await expect(openaiChatHandler({ model: VALID_MODEL })).rejects.toThrow();
+    await expect(completionChatHandler({ model: VALID_MODEL })).rejects.toThrow();
   });
 
   // B3
   it("D3: rejects when `messages` is empty", async () => {
-    await expect(openaiChatHandler({ model: VALID_MODEL, messages: [] })).rejects.toThrow();
+    await expect(completionChatHandler({ model: VALID_MODEL, messages: [] })).rejects.toThrow();
   });
 
   // B4
   it("D4: rejects `temperature` above 2", async () => {
     await expect(
-      openaiChatHandler({
+      completionChatHandler({
         model: VALID_MODEL,
         messages: VALID_MESSAGES,
         temperature: 3,
@@ -141,7 +141,7 @@ describe("openai_chat — input validation (.strict, types, ranges)", () => {
   // B5
   it("D5: rejects `top_p` above 1", async () => {
     await expect(
-      openaiChatHandler({
+      completionChatHandler({
         model: VALID_MODEL,
         messages: VALID_MESSAGES,
         top_p: 2,
@@ -153,7 +153,7 @@ describe("openai_chat — input validation (.strict, types, ranges)", () => {
   // through `tools: [...]` which is explicitly NOT in v1 scope).
   it("D6: rejects unknown extra keys (strict schema)", async () => {
     await expect(
-      openaiChatHandler({
+      completionChatHandler({
         model: VALID_MODEL,
         messages: VALID_MESSAGES,
         unknownKey: "x",
@@ -163,39 +163,10 @@ describe("openai_chat — input validation (.strict, types, ranges)", () => {
 });
 
 // =========================================================================
-// B: Allowlist + Clamp (B7-B10)
+// B: max_tokens clamp (B9-B10)
 // =========================================================================
 
-describe("openai_chat — allowlist + max_tokens clamp", () => {
-  // B7
-  it("P1: accepts a model in env.MODEL_ALLOWLIST", async () => {
-    server.use(
-      http.post(ENDPOINT, () =>
-        sseResponse([
-          JSON.stringify({
-            choices: [{ delta: { content: "ok" }, finish_reason: "stop" }],
-          }),
-        ]),
-      ),
-    );
-    const result = await openaiChatHandler({
-      model: VALID_MODEL, // "gpt-4o-mini" is in DEFAULT_MODEL_ALLOWLIST
-      messages: VALID_MESSAGES,
-    });
-    expect(result.isError).toBe(false);
-    assertNoSecretLeak(result);
-  });
-
-  // B8
-  it("D1: rejects a model NOT in env.MODEL_ALLOWLIST", async () => {
-    await expect(
-      openaiChatHandler({
-        model: "gpt-9999-not-real",
-        messages: VALID_MESSAGES,
-      }),
-    ).rejects.toThrow(/not in allowlist|not in/i);
-  });
-
+describe("completion_chat — max_tokens clamp", () => {
   // B9 — clamp under: passes through unchanged.
   it("P1: passes max_tokens unchanged when ≤ ceiling", async () => {
     let observedMaxTokens: number | undefined;
@@ -210,7 +181,7 @@ describe("openai_chat — allowlist + max_tokens clamp", () => {
         ]);
       }),
     );
-    await openaiChatHandler({
+    await completionChatHandler({
       model: VALID_MODEL,
       messages: VALID_MESSAGES,
       max_tokens: 100, // well under the 4096 default ceiling
@@ -232,7 +203,7 @@ describe("openai_chat — allowlist + max_tokens clamp", () => {
         ]);
       }),
     );
-    const result = await openaiChatHandler({
+    const result = await completionChatHandler({
       model: VALID_MODEL,
       messages: VALID_MESSAGES,
       max_tokens: 999_999,
@@ -246,7 +217,7 @@ describe("openai_chat — allowlist + max_tokens clamp", () => {
 // C: Streaming (B11-B15)
 // =========================================================================
 
-describe("openai_chat — streaming accumulation, usage, finish_reason, tool_calls, maxRetries", () => {
+describe("completion_chat — streaming accumulation, usage, finish_reason, tool_calls, maxRetries", () => {
   // B11 — concatenates delta.content from all chunks
   // B12 — last chunk's `usage` populates structuredContent
   // B13 — last chunk's `finish_reason` populates structuredContent
@@ -269,7 +240,7 @@ describe("openai_chat — streaming accumulation, usage, finish_reason, tool_cal
         ]),
       ),
     );
-    const result = await openaiChatHandler({
+    const result = await completionChatHandler({
       model: VALID_MODEL,
       messages: VALID_MESSAGES,
     });
@@ -309,7 +280,7 @@ describe("openai_chat — streaming accumulation, usage, finish_reason, tool_cal
         ]),
       ),
     );
-    const result = await openaiChatHandler({
+    const result = await completionChatHandler({
       model: VALID_MODEL,
       messages: VALID_MESSAGES,
     });
@@ -330,7 +301,7 @@ describe("openai_chat — streaming accumulation, usage, finish_reason, tool_cal
         return new HttpResponse("upstream blew up", { status: 500 });
       }),
     );
-    const result = await openaiChatHandler({
+    const result = await completionChatHandler({
       model: VALID_MODEL,
       messages: VALID_MESSAGES,
     });
@@ -345,7 +316,7 @@ describe("openai_chat — streaming accumulation, usage, finish_reason, tool_cal
 // D: Abort Propagation (B16)
 // =========================================================================
 
-describe("openai_chat — abort propagation", () => {
+describe("completion_chat — abort propagation", () => {
   // B16a: signal already aborted before the handler runs → handler short-
   // circuits the SDK call. The SDK throws APIUserAbortError, which maps to
   // upstream_error per plan OQ-5.
@@ -361,7 +332,7 @@ describe("openai_chat — abort propagation", () => {
     );
     const ac = new AbortController();
     ac.abort();
-    const result = await openaiChatHandler(
+    const result = await completionChatHandler(
       { model: VALID_MODEL, messages: VALID_MESSAGES },
       { signal: ac.signal },
     );
@@ -399,7 +370,7 @@ describe("openai_chat — abort propagation", () => {
       ),
     );
     const ac = new AbortController();
-    const promise = openaiChatHandler(
+    const promise = completionChatHandler(
       { model: VALID_MODEL, messages: VALID_MESSAGES },
       { signal: ac.signal },
     );
@@ -417,7 +388,7 @@ describe("openai_chat — abort propagation", () => {
 // E: Error Mapping + Secret Guard (B17-B25)
 // =========================================================================
 
-describe("openai_chat — error mapping (auth, rate_limited, context_length, content_policy, upstream_error, bad_request)", () => {
+describe("completion_chat — error mapping (auth, rate_limited, context_length, content_policy, upstream_error, bad_request)", () => {
   // B17 — 401 → auth
   it("D1: maps upstream 401 to code: 'auth'", async () => {
     server.use(
@@ -429,7 +400,7 @@ describe("openai_chat — error mapping (auth, rate_limited, context_length, con
           }),
       ),
     );
-    const result = await openaiChatHandler({
+    const result = await completionChatHandler({
       model: VALID_MODEL,
       messages: VALID_MESSAGES,
     });
@@ -444,7 +415,7 @@ describe("openai_chat — error mapping (auth, rate_limited, context_length, con
     server.use(
       http.post(ENDPOINT, () => new HttpResponse(JSON.stringify({ error: {} }), { status: 403 })),
     );
-    const result = await openaiChatHandler({
+    const result = await completionChatHandler({
       model: VALID_MODEL,
       messages: VALID_MESSAGES,
     });
@@ -465,7 +436,7 @@ describe("openai_chat — error mapping (auth, rate_limited, context_length, con
           }),
       ),
     );
-    const result = await openaiChatHandler({
+    const result = await completionChatHandler({
       model: VALID_MODEL,
       messages: VALID_MESSAGES,
     });
@@ -482,7 +453,7 @@ describe("openai_chat — error mapping (auth, rate_limited, context_length, con
     server.use(
       http.post(ENDPOINT, () => new HttpResponse(JSON.stringify({ error: {} }), { status: 429 })),
     );
-    const result = await openaiChatHandler({
+    const result = await completionChatHandler({
       model: VALID_MODEL,
       messages: VALID_MESSAGES,
     });
@@ -510,7 +481,7 @@ describe("openai_chat — error mapping (auth, rate_limited, context_length, con
           ),
       ),
     );
-    const result = await openaiChatHandler({
+    const result = await completionChatHandler({
       model: VALID_MODEL,
       messages: VALID_MESSAGES,
     });
@@ -533,7 +504,7 @@ describe("openai_chat — error mapping (auth, rate_limited, context_length, con
           ),
       ),
     );
-    const result = await openaiChatHandler({
+    const result = await completionChatHandler({
       model: VALID_MODEL,
       messages: VALID_MESSAGES,
     });
@@ -547,7 +518,7 @@ describe("openai_chat — error mapping (auth, rate_limited, context_length, con
     server.use(
       http.post(ENDPOINT, () => new HttpResponse(JSON.stringify({ error: {} }), { status: 500 })),
     );
-    const result = await openaiChatHandler({
+    const result = await completionChatHandler({
       model: VALID_MODEL,
       messages: VALID_MESSAGES,
     });
@@ -556,10 +527,38 @@ describe("openai_chat — error mapping (auth, rate_limited, context_length, con
     assertNoSecretLeak(result);
   });
 
+  // 5xx with non-OpenAI-shaped body → body forwarded into the result text.
+  it("D6b: forwards upstream 5xx body into result text", async () => {
+    const body = '{"detail":"query rejected: out of domain"}';
+    server.use(http.post(ENDPOINT, () => new HttpResponse(body, { status: 500 })));
+    const result = await completionChatHandler({
+      model: VALID_MODEL,
+      messages: VALID_MESSAGES,
+    });
+    expect(result.isError).toBe(true);
+    expect(result.structuredContent.code).toBe("upstream_error");
+    expect(result.content[0]?.text).toContain("query rejected: out of domain");
+    assertNoSecretLeak(result);
+  });
+
+  // 5xx body that contains a known secret → secret is redacted before forwarding.
+  it("D6c: redacts known secrets in forwarded 5xx body", async () => {
+    const body = JSON.stringify({ detail: `leak ${env.OPENAI_API_KEY} end` });
+    server.use(http.post(ENDPOINT, () => new HttpResponse(body, { status: 500 })));
+    const result = await completionChatHandler({
+      model: VALID_MODEL,
+      messages: VALID_MESSAGES,
+    });
+    expect(result.isError).toBe(true);
+    expect(result.structuredContent.code).toBe("upstream_error");
+    expect(result.content[0]?.text).toContain("[REDACTED]");
+    assertNoSecretLeak(result);
+  });
+
   // B23 — network failure (fetch error) → upstream_error
   it("D7: maps a fetch-level network failure to code: 'upstream_error'", async () => {
     server.use(http.post(ENDPOINT, () => HttpResponse.error()));
-    const result = await openaiChatHandler({
+    const result = await completionChatHandler({
       model: VALID_MODEL,
       messages: VALID_MESSAGES,
     });
@@ -573,7 +572,7 @@ describe("openai_chat — error mapping (auth, rate_limited, context_length, con
     server.use(
       http.post(ENDPOINT, () => new HttpResponse(JSON.stringify({ error: {} }), { status: 422 })),
     );
-    const result = await openaiChatHandler({
+    const result = await completionChatHandler({
       model: VALID_MODEL,
       messages: VALID_MESSAGES,
     });
@@ -594,7 +593,7 @@ describe("openai_chat — error mapping (auth, rate_limited, context_length, con
           }),
       ),
     );
-    const result = await openaiChatHandler({
+    const result = await completionChatHandler({
       model: VALID_MODEL,
       messages: VALID_MESSAGES,
     });
@@ -631,7 +630,7 @@ describe("openai_chat — error mapping (auth, rate_limited, context_length, con
     for (const responseFactory of errorScenarios) {
       server.resetHandlers();
       server.use(http.post(ENDPOINT, () => responseFactory()));
-      const result = await openaiChatHandler({
+      const result = await completionChatHandler({
         model: VALID_MODEL,
         messages: VALID_MESSAGES,
       });
@@ -645,18 +644,18 @@ describe("openai_chat — error mapping (auth, rate_limited, context_length, con
 // F: Tool descriptor surface
 // =========================================================================
 
-describe("openai_chat — exported tool descriptor", () => {
+describe("completion_chat — exported tool descriptor", () => {
   it("P1: exports a descriptor with name, description, inputSchema, and handler", () => {
-    expect(openaiChatTool.name).toBe("openai_chat");
-    expect(typeof openaiChatTool.description).toBe("string");
-    expect(openaiChatTool.description.length).toBeGreaterThan(0);
+    expect(completionChatTool.name).toBe("completion_chat");
+    expect(typeof completionChatTool.description).toBe("string");
+    expect(completionChatTool.description.length).toBeGreaterThan(0);
     // inputSchema is the same zod schema the handler uses internally; we
     // assert by parsing a known-good input through it.
-    const parsed = openaiChatTool.inputSchema.safeParse({
+    const parsed = completionChatTool.inputSchema.safeParse({
       model: VALID_MODEL,
       messages: VALID_MESSAGES,
     });
     expect(parsed.success).toBe(true);
-    expect(openaiChatTool.handler).toBe(openaiChatHandler);
+    expect(completionChatTool.handler).toBe(completionChatHandler);
   });
 });

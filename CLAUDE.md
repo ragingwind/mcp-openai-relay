@@ -13,7 +13,7 @@ working in this repository. **It overrides the global rules at `~/.claude/CLAUDE
 ## 1. One-line summary
 
 A relay server that exposes OpenAI Chat Completions as an MCP (Model Context Protocol) tool —
-deployed on Vercel, Next.js App Router, Bearer authentication, single tool `openai_chat` in v1.
+deployed on Vercel, Next.js App Router, Bearer authentication, single tool `completion_chat` in v1.
 
 Full architecture: [`doc/ARCHITECTURE.md`](./doc/ARCHITECTURE.md)
 
@@ -45,6 +45,8 @@ test:unit: pnpm test:unit    # vitest run tests/unit
 test:integration: pnpm test:integration  # vitest run tests/integration
 dev:      pnpm dev           # next dev (port 3000)
 dev:vercel: pnpm dev:vercel  # vercel dev (for verifying Vercel runtime parity)
+verify:   pnpm verify        # smoke C1/C2/C5 against a running dev server
+inspect:  pnpm inspect       # ad-hoc tools/call via MCP Inspector CLI (see doc/QA-MCP-INSPECTOR.md)
 ```
 
 ### Evidence policy
@@ -63,7 +65,6 @@ The following items extend or override the global `core.md`.
 - **Never log OpenAI/MCP response bodies via `console`/logs/error messages** — only metadata (model, token counts, latency, status) is allowed.
 - Never expose `OPENAI_API_KEY` or `RELAY_AUTH_TOKEN` in plain text in code/tests/docs/commits.
 - Never use `===` to compare bearer tokens — always use `timingSafeEqual` from `node:crypto`.
-- Never bypass `MODEL_ALLOWLIST` validation when calling a model.
 - Never add features outside v1 scope (Responses API, OAuth, rate limiting, external KV, observability — see [`doc/ARCHITECTURE.md` §11](./doc/ARCHITECTURE.md#11-future-work-v2-backlog)).
 - Never bump only one of `mcp-handler`/`@modelcontextprotocol/sdk` — the two packages are ABI-coupled (`^1.1`, `^1.26`); upgrade them as a pair.
 
@@ -93,17 +94,31 @@ Full tree: [`doc/ARCHITECTURE.md` §5](./doc/ARCHITECTURE.md#5-directory-structu
 
 ## 6. Environment / secrets
 
-| Key | Source |
-|---|---|
-| `OPENAI_API_KEY` | Vercel Sensitive env var (separate Production/Preview) |
-| `RELAY_AUTH_TOKEN` | Vercel Sensitive env var (32+ random bytes) |
-| `MODEL_ALLOWLIST` | Plain env var, default `gpt-4o-mini,gpt-4o,gpt-4.1-mini,gpt-4.1` |
-| `MAX_OUTPUT_TOKENS_CEILING` | Plain, default `4096` |
-| `REQUEST_TIMEOUT_MS` | Plain, default `60000` |
+### Server (consumed by `lib/env.ts`)
+
+| Key | Required | Source / default |
+|---|---|---|
+| `OPENAI_API_KEY` | ✅ | Vercel Sensitive env var (separate Production/Preview) |
+| `RELAY_AUTH_TOKEN` | ✅ | Vercel Sensitive env var (32+ random bytes) |
+| `OPENAI_BASE_URL` | ❌ | Plain env var. Default: SDK built-in. Override to point at Azure OpenAI, vLLM/Ollama, or a mock. |
+| `MAX_OUTPUT_TOKENS_CEILING` | ❌ | Plain, default `4096` |
+| `REQUEST_TIMEOUT_MS` | ❌ | Plain, default `60000` |
+
+### Script-only (consumed by `scripts/mcp-inspect.mjs` and `scripts/verify.mjs`)
+
+These are NOT read by the server. They only set defaults for the verification scripts; flags always win.
+
+| Key | Used by | Default | Override |
+|---|---|---|---|
+| `MCP_URL`      | `verify`, `inspect` | `http://localhost:3000/api/mcp` | `--url=` |
+| `MCP_TOOL`     | `inspect` | `completion_chat` | `--tool=` |
+| `MCP_MODEL`    | `inspect` | `gpt-4o-mini` | `--model=` |
+| `MCP_MESSAGE`  | `inspect` | `ping` | `--message=` |
+| `VERIFY_MODEL` | `verify`  | `gpt-4o-mini` | (env only) |
 
 Local development uses `.env.local` (gitignored). `.env.example` records key names only.
 
-Details: [`doc/ARCHITECTURE.md` §7](./doc/ARCHITECTURE.md#7-environment-variables).
+Details: [`doc/ARCHITECTURE.md` §7](./doc/ARCHITECTURE.md#7-environment-variables) (server) / [`doc/QA-MCP-INSPECTOR.md`](./doc/QA-MCP-INSPECTOR.md) (script).
 
 ---
 
@@ -111,10 +126,9 @@ Details: [`doc/ARCHITECTURE.md` §7](./doc/ARCHITECTURE.md#7-environment-variabl
 
 | Case | Location | Notes |
 |---|---|---|
-| Tool input zod validation | `tests/unit/openai-chat.test.ts` | Enumerate schema-violation cases |
-| Model allowlist | `tests/unit/openai-chat.test.ts` | Both allow and reject |
-| `max_tokens` clamp | `tests/unit/openai-chat.test.ts` | Caller value > ceiling case |
-| OpenAI error mapping (401/429/400/5xx) | `tests/unit/openai-chat.test.ts` | Forge responses with MSW |
+| Tool input zod validation | `tests/unit/completion-chat.test.ts` | Enumerate schema-violation cases |
+| `max_tokens` clamp | `tests/unit/completion-chat.test.ts` | Caller value > ceiling case |
+| OpenAI error mapping (401/429/400/5xx) | `tests/unit/completion-chat.test.ts` | Forge responses with MSW |
 | Bearer auth (present/missing/invalid) | `tests/integration/route.test.ts` | Verify 401 + `WWW-Authenticate` header |
 | `tools/list` JSON-RPC | `tests/integration/route.test.ts` | Confirm a single tool is exposed |
 | `tools/call` happy path | `tests/integration/route.test.ts` | Mock OpenAI with MSW |

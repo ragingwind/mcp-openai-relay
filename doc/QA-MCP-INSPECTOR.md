@@ -13,9 +13,12 @@ end-to-end verification against a real OpenAI API call.
 
 ---
 
-## Quick path: `pnpm verify`
+## Quick path: `pnpm verify` and `pnpm inspect`
 
-For a fast local check against a running `pnpm dev`:
+Two scripts wrap the smoke flow against a running `pnpm dev`. Run either in a
+second terminal.
+
+### `pnpm verify` — automated three-scenario smoke
 
 ```bash
 # terminal 1
@@ -25,14 +28,48 @@ pnpm dev
 pnpm verify
 ```
 
-`pnpm verify` sends JSON-RPC directly to `/api/mcp` and reports PASS/FAIL for
-**C1, C2, C3, and C5** — the four scenarios assertable from a client. It also
-prints an evidence-record block ready to paste into the PR. Costs ~$0.0001 per
-run (one `gpt-4o-mini` call). Override with `--url=...` or `MCP_URL`.
+Sends JSON-RPC directly to `/api/mcp` and reports PASS/FAIL for **C1, C2, and
+C5** — the three scenarios assertable from a client. Prints an evidence-record
+block ready to paste into the PR. Costs ~$0.0001 per run (one `gpt-4o-mini`
+call).
+
+Inputs (env-only — `verify.mjs` does not parse flags):
+
+| env | default | purpose |
+|---|---|---|
+| `MCP_URL`      | `http://localhost:3000/api/mcp` | endpoint |
+| `VERIFY_MODEL` | `gpt-4o-mini`                   | model for the C2 happy-path call |
+
+`RELAY_AUTH_TOKEN` is read from `.env.local`.
 
 C4 (clamp) and C6 (cancellation) cannot be asserted from a client — for those
-two, fall through to the manual six-scenario procedure below. Production-side
+two, fall through to the manual five-scenario procedure below. Production-side
 re-verification (§E) is also manual: this script is local-only.
+
+### `pnpm inspect` — ad-hoc single call
+
+Wraps `npx @modelcontextprotocol/inspector --cli` so a single tool call can be
+made without the Inspector UI. Useful for iterating on prompts or pointing at a
+non-default endpoint / model / tool.
+
+```bash
+pnpm inspect                                  # tools/call → completion_chat with "ping"
+pnpm inspect --method=tools/list              # registered tools only
+pnpm inspect --message="안녕"                 # custom user message
+pnpm inspect --url=http://localhost:3001/api/mcp --model=gpt-4o
+pnpm inspect --tool=other_tool --message="..."
+```
+
+Flags (priority: `--flag=` > `process.env` > `.env.local` > default):
+
+| Flag | env | default |
+|---|---|---|
+| `--url=`     | `MCP_URL`     | `http://localhost:3000/api/mcp` |
+| `--token=`   | `RELAY_AUTH_TOKEN` (also read from `.env.local`) | — |
+| `--tool=`    | `MCP_TOOL`    | `completion_chat` |
+| `--model=`   | `MCP_MODEL`   | `gpt-4o-mini` |
+| `--message=` | `MCP_MESSAGE` | `ping` |
+| `--method=`  | —             | `tools/call` (also `tools/list`) |
 
 ---
 
@@ -83,19 +120,18 @@ re-verification (§E) is also manual: this script is local-only.
      (`CLAUDE.md` §9 — frequently forgotten)
 
 3. Click **Connect**. Expect the connection to succeed and the **Tools** tab
-   to show one tool: `openai_chat`.
+   to show one tool: `completion_chat`.
 
 ---
 
 ## C. Verification scenarios
 
-All six MUST pass before PR merge.
+All five MUST pass before PR merge.
 
 | # | Scenario | Steps | Expected result |
 |---|---|---|---|
-| **C1** | Tool list | In Inspector, switch to **Tools** tab | Single tool `openai_chat` is listed with input schema (model, messages, temperature, max_tokens, top_p, stop) |
-| **C2** | Happy path | Click **Run Tool** on `openai_chat`. Inputs: `model: gpt-4o-mini`, `messages: [{role: "user", content: "ping"}]` | Response contains accumulated text in `result.content[0].text`. `result.structuredContent.usage.total_tokens > 0`. `result.isError` is `false`. |
-| **C3** | Allowlist reject | Same as C2 but `model: gpt-9999` (a model definitely not in `MODEL_ALLOWLIST`) | Either zod validation rejects at parse time (error mentions `model not in allowlist`) OR `result.isError: true` with `code: "bad_request"`. The model is NOT called upstream. |
+| **C1** | Tool list | In Inspector, switch to **Tools** tab | Single tool `completion_chat` is listed with input schema (model, messages, temperature, max_tokens, top_p, stop) |
+| **C2** | Happy path | Click **Run Tool** on `completion_chat`. Inputs: `model: gpt-4o-mini`, `messages: [{role: "user", content: "ping"}]` | Response contains accumulated text in `result.content[0].text`. `result.structuredContent.usage.total_tokens > 0`. `result.isError` is `false`. |
 | **C4** | max_tokens clamp | Same as C2 but `max_tokens: 999999` (well above `MAX_OUTPUT_TOKENS_CEILING`) | Response succeeds; the value was silently clamped to `MAX_OUTPUT_TOKENS_CEILING` (default 4096) before the upstream call. No error. |
 | **C5** | Bearer rejection | In Inspector, **Disconnect**, change the Header to `Authorization: Bearer wrong-token`, **Connect** | Connection fails with HTTP 401 + `WWW-Authenticate: Bearer` header. Reconnect with the correct token to continue. |
 | **C6** | Cancellation (manual) | Run C2 with a long prompt (e.g., "Write a 500-word essay about sourdough"). Mid-stream, **Disconnect** in the Inspector | Server logs show the SDK call aborted; OpenAI usage page (refreshed in ~1 minute) does NOT show full output cost. (Imprecise visual confirmation — manual observation only.) |
@@ -118,8 +154,7 @@ Commit:    <git rev-parse --short HEAD>
 Endpoint:  http://localhost:3000/api/mcp  (or production URL if §5 of doc/DEPLOY.md)
 
 C1 tools/list                — PASS / FAIL  <one-line note>
-C2 openai_chat happy path    — PASS / FAIL  usage: {prompt_tokens: N, completion_tokens: N, total_tokens: N}
-C3 allowlist reject          — PASS / FAIL  <one-line note>
+C2 completion_chat happy path    — PASS / FAIL  usage: {prompt_tokens: N, completion_tokens: N, total_tokens: N}
 C4 max_tokens clamp          — PASS / FAIL  <one-line note>
 C5 wrong bearer 401          — PASS / FAIL  <one-line note>
 C6 cancellation              — PASS / FAIL  <one-line note>
@@ -137,7 +172,7 @@ metadata only per `CLAUDE.md` §4).
 ## E. After production deploy
 
 After running [`doc/DEPLOY.md` §5 first-deployment checklist](./DEPLOY.md#5-first-deployment),
-re-run **C1, C2, C3, C5** against the production URL
+re-run **C1, C2, C5** against the production URL
 (`https://<project>.vercel.app/api/mcp`) using the **production**
 `RELAY_AUTH_TOKEN` and the prod-issued `OPENAI_API_KEY`.
 

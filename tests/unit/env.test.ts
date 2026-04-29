@@ -61,13 +61,39 @@ describe("parseEnv — required keys", () => {
   });
 });
 
-describe("parseEnv — defaults", () => {
-  // B7: MODEL_ALLOWLIST default
-  it("applies the default 4-model allowlist when MODEL_ALLOWLIST is undefined", () => {
+describe("parseEnv — OPENAI_BASE_URL", () => {
+  it("defaults OPENAI_BASE_URL to undefined when missing", () => {
     const env = parseEnv(minimalValid);
-    expect(env.MODEL_ALLOWLIST).toEqual(["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini", "gpt-4.1"]);
+    expect(env.OPENAI_BASE_URL).toBeUndefined();
   });
 
+  it("normalises empty OPENAI_BASE_URL to undefined", () => {
+    const env = parseEnv({ ...minimalValid, OPENAI_BASE_URL: "" });
+    expect(env.OPENAI_BASE_URL).toBeUndefined();
+  });
+
+  it("accepts a valid OPENAI_BASE_URL", () => {
+    const env = parseEnv({
+      ...minimalValid,
+      OPENAI_BASE_URL: "https://api.example.com/v1",
+    });
+    expect(env.OPENAI_BASE_URL).toBe("https://api.example.com/v1");
+  });
+
+  it("rejects a non-URL OPENAI_BASE_URL", () => {
+    const err = expectThrow({ ...minimalValid, OPENAI_BASE_URL: "not-a-url" });
+    expect(err.message).toContain("OPENAI_BASE_URL");
+  });
+
+  it("does not echo OPENAI_BASE_URL value in error messages", () => {
+    const sentinel = "garbage-url-leak-marker";
+    const err = expectThrow({ ...minimalValid, OPENAI_BASE_URL: sentinel });
+    expect(err.message).not.toContain(sentinel);
+    expect(err.message).toContain("OPENAI_BASE_URL");
+  });
+});
+
+describe("parseEnv — defaults", () => {
   // B10: MAX_OUTPUT_TOKENS_CEILING default
   it("defaults MAX_OUTPUT_TOKENS_CEILING to 4096 when undefined", () => {
     const env = parseEnv(minimalValid);
@@ -78,34 +104,6 @@ describe("parseEnv — defaults", () => {
   it("defaults REQUEST_TIMEOUT_MS to 60000 when undefined", () => {
     const env = parseEnv(minimalValid);
     expect(env.REQUEST_TIMEOUT_MS).toBe(60_000);
-  });
-});
-
-describe("parseEnv — MODEL_ALLOWLIST CSV", () => {
-  // B8: trim whitespace around entries
-  it("trims whitespace around each CSV entry", () => {
-    const env = parseEnv({ ...minimalValid, MODEL_ALLOWLIST: "a , b , c" });
-    expect(env.MODEL_ALLOWLIST).toEqual(["a", "b", "c"]);
-  });
-
-  // B9: filter empty entries (consecutive commas, trailing comma)
-  it("filters empty entries in the CSV (consecutive and trailing commas)", () => {
-    const env = parseEnv({ ...minimalValid, MODEL_ALLOWLIST: "a,,c," });
-    expect(env.MODEL_ALLOWLIST).toEqual(["a", "c"]);
-  });
-
-  // OQ-2: explicit empty string → zero-length list → throws
-  it("refuses an explicit empty MODEL_ALLOWLIST (OQ-2: zero-length list)", () => {
-    const err = expectThrow({ ...minimalValid, MODEL_ALLOWLIST: "" });
-    expect(err.message).toContain("MODEL_ALLOWLIST");
-    expect(err.message).toContain("at least one entry");
-  });
-
-  // OQ-2 cont.: only commas/whitespace → also zero-length → throws
-  it("refuses MODEL_ALLOWLIST that contains only commas and whitespace", () => {
-    const err = expectThrow({ ...minimalValid, MODEL_ALLOWLIST: " , , " });
-    expect(err.message).toContain("MODEL_ALLOWLIST");
-    expect(err.message).toContain("at least one entry");
   });
 });
 

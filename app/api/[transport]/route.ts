@@ -10,7 +10,7 @@
 //        `WWW-Authenticate: Bearer ...` + a `/.well-known/oauth-protected-resource`
 //        discovery URL pointer. Authenticated requests reach the inner handler.
 //   2. `createMcpHandler((server) => server.tool(...))` — registers exactly one
-//      tool: `openai_chat` (v1 scope). Routes JSON-RPC `tools/list` and
+//      tool: `completion_chat` (v1 scope). Routes JSON-RPC `tools/list` and
 //      `tools/call` internally.
 //
 // CLAUDE.md §9 invariants enforced here:
@@ -23,7 +23,7 @@
 
 import { createMcpHandler, withMcpAuth } from "mcp-handler";
 import { verifyToken } from "../../../lib/auth.js";
-import { openaiChatTool } from "../../../lib/tools/openai-chat.js";
+import { completionChatTool } from "../../../lib/tools/completion-chat.js";
 
 const handler = createMcpHandler(
   (server) => {
@@ -33,10 +33,10 @@ const handler = createMcpHandler(
     // the shape is the documented signature in @modelcontextprotocol/sdk's
     // McpServer.
     server.tool(
-      openaiChatTool.name,
-      openaiChatTool.description,
-      openaiChatTool.inputSchema.shape,
-      (args, extra) => openaiChatTool.handler(args, extra),
+      completionChatTool.name,
+      completionChatTool.description,
+      completionChatTool.inputSchema.shape,
+      (args, extra) => completionChatTool.handler(args, extra),
     );
   },
   {},

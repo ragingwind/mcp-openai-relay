@@ -2,13 +2,13 @@
 // Real-server smoke test. Run `pnpm dev` in another terminal first, then
 // `pnpm verify` here.
 //
-// Sends JSON-RPC directly to /api/mcp, covering C1, C2, C3, C5 from
+// Sends JSON-RPC directly to /api/mcp, covering C1, C2, C5 from
 // doc/QA-MCP-INSPECTOR.md. The MCP Inspector UI is bypassed — its only role in
 // the manual procedure is to construct these same requests for a human.
 //
 // Skipped:
 //   C4 (max_tokens clamp) — server-side, invisible to client; covered by
-//      tests/unit/openai-chat.test.ts.
+//      tests/unit/completion-chat.test.ts.
 //   C6 (cancellation)     — relies on visual inspection of the OpenAI usage
 //      page; stays manual per QA-MCP-INSPECTOR.md.
 
@@ -111,18 +111,18 @@ try {
   if (res.status !== 200) throw new Error(`HTTP ${res.status}`);
   const env = await readJsonRpc(res);
   const tools = env.result?.tools ?? [];
-  const ok = tools.length === 1 && tools[0]?.name === "openai_chat";
+  const ok = tools.length === 1 && tools[0]?.name === "completion_chat";
   record(
     "C1",
-    "tools/list — single openai_chat",
+    "tools/list — single completion_chat",
     ok,
     ok ? "1 tool" : `got ${JSON.stringify(tools.map((t) => t.name))}`,
   );
 } catch (err) {
-  record("C1", "tools/list — single openai_chat", false, err.message);
+  record("C1", "tools/list — single completion_chat", false, err.message);
 }
 
-// ---- C2: openai_chat happy path ---------------------------------------
+// ---- C2: completion_chat happy path ---------------------------------------
 
 try {
   const res = await rpc({
@@ -130,7 +130,7 @@ try {
     id: 2,
     method: "tools/call",
     params: {
-      name: "openai_chat",
+      name: "completion_chat",
       arguments: {
         model: MODEL,
         messages: [{ role: "user", content: "ping" }],
@@ -151,35 +151,9 @@ try {
   const note = usage
     ? `prompt=${usage.prompt_tokens} completion=${usage.completion_tokens} total=${usage.total_tokens}`
     : "no usage";
-  record("C2", "openai_chat happy path", ok, note);
+  record("C2", "completion_chat happy path", ok, note);
 } catch (err) {
-  record("C2", "openai_chat happy path", false, err.message);
-}
-
-// ---- C3: allowlist reject ---------------------------------------------
-
-try {
-  const res = await rpc({
-    jsonrpc: "2.0",
-    id: 3,
-    method: "tools/call",
-    params: {
-      name: "openai_chat",
-      arguments: {
-        model: "gpt-9999-not-real",
-        messages: [{ role: "user", content: "hi" }],
-      },
-    },
-  });
-  if (res.status !== 200) throw new Error(`HTTP ${res.status}`);
-  const env = await readJsonRpc(res);
-  const hasError = Boolean(env.error);
-  const isToolError = env.result?.isError === true;
-  const serialized = JSON.stringify(env);
-  const ok = (hasError || isToolError) && /allowlist|invalid|model/i.test(serialized);
-  record("C3", "allowlist rejects gpt-9999", ok);
-} catch (err) {
-  record("C3", "allowlist rejects gpt-9999", false, err.message);
+  record("C2", "completion_chat happy path", false, err.message);
 }
 
 // ---- C5: wrong bearer 401 ---------------------------------------------

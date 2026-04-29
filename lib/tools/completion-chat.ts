@@ -1,7 +1,7 @@
-// openai_chat MCP tool handler (#4).
+// completion_chat MCP tool handler (#4).
 //
 // v1 single tool per ARCHITECTURE.md §3-§4. Steps the handler performs:
-//   1. zod-validate input (.strict, allowlist refine, max_tokens clamp)
+//   1. zod-validate input (.strict, max_tokens clamp)
 //   2. wire AbortController to extra.signal so MCP cancellation propagates
 //   3. call openai.chat.completions.create({ stream: true,
 //        stream_options: { include_usage: true } }, { signal, maxRetries: 0 })
@@ -17,15 +17,13 @@
 import OpenAI from "openai";
 import { z } from "zod";
 import { env } from "../env.js";
-import { openai } from "../openai-client.js";
+import { openai, requestScope } from "../openai-client.js";
 
 // --- input schema ---------------------------------------------------------
 
 const inputSchema = z
   .object({
-    model: z.string().refine((m) => env.MODEL_ALLOWLIST.includes(m), {
-      message: "model not in allowlist",
-    }),
+    model: z.string().min(1),
     messages: z
       .array(
         z.object({
@@ -49,7 +47,7 @@ const inputSchema = z
   })
   .strict();
 
-export type OpenaiChatInput = z.infer<typeof inputSchema>;
+export type CompletionChatInput = z.infer<typeof inputSchema>;
 
 // --- result shape ---------------------------------------------------------
 
@@ -59,7 +57,7 @@ export type OpenaiUsage = {
   total_tokens: number;
 };
 
-export type OpenaiChatStructured = {
+export type CompletionChatStructured = {
   model: string;
   // Optional fields: under tsconfig `exactOptionalPropertyTypes` the result
   // builder MUST omit these keys entirely when unset (rather than assigning
@@ -70,9 +68,9 @@ export type OpenaiChatStructured = {
   retryAfter?: number;
 };
 
-export type OpenaiChatResult = {
+export type CompletionChatResult = {
   content: Array<{ type: "text"; text: string }>;
-  structuredContent: OpenaiChatStructured;
+  structuredContent: CompletionChatStructured;
   isError: boolean;
 };
 
@@ -116,7 +114,11 @@ function mapOpenAIError(err: unknown): MappedError {
     }
 
     if (typeof status === "number" && status >= 500) {
-      return { code: "upstream_error", message: "Upstream server error" };
+      const body = requestScope.getStore()?.upstreamBody;
+      return {
+        code: "upstream_error",
+        message: body ? `Upstream server error: ${body}` : "Upstream server error",
+      };
     }
 
     if (status === undefined) {
@@ -135,17 +137,17 @@ function mapOpenAIError(err: unknown): MappedError {
 
 // --- handler --------------------------------------------------------------
 
-export async function openaiChatHandler(
+export async function completionChatHandler(
   rawInput: unknown,
   extra: { signal?: AbortSignal } = {},
-): Promise<OpenaiChatResult> {
+): Promise<CompletionChatResult> {
   // Defensive validation. In production the mcp-handler runtime parses
   // the request against `inputSchema` before invoking the handler, but we
   // re-parse here so the handler is also safe to call directly (tests and
   // any future direct-call paths). zod errors propagate to the caller —
   // they are not caught and re-mapped to `bad_request`, because schema
   // violations are caller bugs, not upstream errors.
-  const input: OpenaiChatInput = inputSchema.parse(rawInput);
+  const input: CompletionChatInput = inputSchema.parse(rawInput);
 
   // Local AbortController so we can both observe the caller's signal and
   // reuse the abort path inside the iterator if needed in the future.
@@ -158,6 +160,13 @@ export async function openaiChatHandler(
     }
   }
 
+  return requestScope.run({}, () => runOnce(input, ac));
+}
+
+async function runOnce(
+  input: CompletionChatInput,
+  ac: AbortController,
+): Promise<CompletionChatResult> {
   try {
     // Build the request body without spreading-undefined for optional keys
     // — the OpenAI SDK types are `number | null` (not `| undefined`) under
@@ -199,7 +208,7 @@ export async function openaiChatHandler(
     // Build structuredContent without injecting `undefined` for optional
     // keys (exactOptionalPropertyTypes). Spread the optional fields only
     // when defined.
-    const structuredContent: OpenaiChatStructured = {
+    const structuredContent: CompletionChatStructured = {
       model: input.model,
       ...(usage !== undefined ? { usage } : {}),
       ...(finishReason !== undefined ? { finish_reason: finishReason } : {}),
@@ -212,7 +221,7 @@ export async function openaiChatHandler(
     };
   } catch (err) {
     const mapped = mapOpenAIError(err);
-    const structuredContent: OpenaiChatStructured = {
+    const structuredContent: CompletionChatStructured = {
       model: input.model,
       code: mapped.code,
       ...(mapped.retryAfter !== undefined ? { retryAfter: mapped.retryAfter } : {}),
@@ -227,9 +236,9 @@ export async function openaiChatHandler(
 
 // --- tool descriptor ------------------------------------------------------
 
-export const openaiChatTool = {
-  name: "openai_chat",
+export const completionChatTool = {
+  name: "completion_chat",
   description: "Invoke OpenAI Chat Completions and return the accumulated assistant message.",
   inputSchema,
-  handler: openaiChatHandler,
+  handler: completionChatHandler,
 } as const;

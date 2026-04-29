@@ -15,7 +15,7 @@ LLM can call OpenAI models as if they were tools.
 
 ## Status
 
-- **v1 (current)**: single tool `openai_chat`. Bearer token authentication. Streamable HTTP transport.
+- **v1 (current)**: single tool `completion_chat`. Bearer token authentication. Streamable HTTP transport.
 - v2 backlog: Responses API, OAuth 2.1, rate limiting, budget caps, observability — see [`doc/ARCHITECTURE.md` §11](./doc/ARCHITECTURE.md#11-future-work-v2-backlog).
 
 ---
@@ -44,18 +44,34 @@ required values are not set.
 
 ### Verify the running server
 
-In a second terminal — while `pnpm dev` is running:
+Two scripts wrap the MCP smoke flow. Run either in a second terminal while
+`pnpm dev` is running.
+
+**`pnpm verify`** — automated three-scenario smoke test:
 
 ```bash
 pnpm verify
 ```
 
-This sends JSON-RPC directly to `/api/mcp` and reports PASS/FAIL for the four
-checks that can be asserted from a client (C1 `tools/list`, C2 happy path,
-C3 model allowlist, C5 wrong-bearer 401). It calls OpenAI once with
-`gpt-4o-mini` (~$0.0001 per run). Override with `--url=` or `MCP_URL`.
+Sends JSON-RPC directly to `/api/mcp` and reports PASS/FAIL for the three
+client-assertable scenarios (C1 `tools/list`, C2 happy path, C5 wrong-bearer
+401). Calls OpenAI once with `gpt-4o-mini` (~$0.0001 per run). Override with
+`--url=` or `MCP_URL`.
 
-For the full six-scenario manual procedure (including C4 clamp and C6
+**`pnpm inspect`** — ad-hoc single call (wraps `npx @modelcontextprotocol/inspector --cli`):
+
+```bash
+pnpm inspect                                                   # tools/call → completion_chat, "ping"
+pnpm inspect --method=tools/list                               # list registered tools
+pnpm inspect --message="안녕"                                  # custom user message
+pnpm inspect --url=http://localhost:3001/api/mcp --model=gpt-4o
+pnpm inspect --tool=other_tool --message="..."                 # different tool (when v2 adds more)
+```
+
+Flags fall back to `process.env` then `.env.local`: `MCP_URL`, `MCP_TOOL`,
+`MCP_MODEL`, `MCP_MESSAGE`, `RELAY_AUTH_TOKEN`.
+
+For the full five-scenario manual procedure (including C4 clamp and C6
 cancellation), see [`doc/QA-MCP-INSPECTOR.md`](./doc/QA-MCP-INSPECTOR.md).
 
 ### Vercel deployment
@@ -105,13 +121,13 @@ Or register directly in `.mcp.json`:
 
 ## Tool specification
 
-### `openai_chat`
+### `completion_chat`
 
 Invokes OpenAI Chat Completions once and returns the accumulated response text.
 
 | Input | Type | Required |
 |---|---|---|
-| `model` | `string` (allowlist) | ✅ |
+| `model` | `string` | ✅ |
 | `messages` | `Array<{role, content}>` | ✅ |
 | `temperature` | `number` (0~2) | |
 | `max_tokens` | `number` (clamped to server ceiling) | |
@@ -128,7 +144,7 @@ Response: accumulated text plus `usage` metadata. For the full schema see [`doc/
 |---|---|---|
 | `OPENAI_API_KEY` | ✅ | Used to call OpenAI (Vercel Sensitive) |
 | `RELAY_AUTH_TOKEN` | ✅ | Bearer token sent by the MCP host (32+ random bytes) |
-| `MODEL_ALLOWLIST` | | CSV. Default `gpt-4o-mini,gpt-4o,gpt-4.1-mini,gpt-4.1` |
+| `OPENAI_BASE_URL` | | Override the OpenAI SDK base URL (Azure OpenAI / vLLM / Ollama / mock) |
 | `MAX_OUTPUT_TOKENS_CEILING` | | Default `4096` |
 | `REQUEST_TIMEOUT_MS` | | Default `60000` |
 
@@ -145,7 +161,8 @@ pnpm lint                # biome check .
 pnpm test                # vitest run
 pnpm test:unit           # unit tests only
 pnpm test:integration    # integration tests only
-pnpm verify              # smoke C1/C2/C3/C5 against a running pnpm dev
+pnpm verify              # smoke C1/C2/C5 against a running pnpm dev
+pnpm inspect             # ad-hoc tools/call (wraps MCP Inspector CLI)
 ```
 
 ---

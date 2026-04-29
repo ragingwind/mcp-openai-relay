@@ -37,7 +37,7 @@ sources in the [Reference index](#reference-index).
 │                      │ ─────────────► │  /api/[transport]/route.ts  │ ─────────────► │  completions      │
 │                      │                │   ├─ withMcpAuth(bearer)    │                 │                   │
 │                      │ ◄───────────── │   ├─ mcp-handler            │ ◄───────────── │                   │
-│                      │  CallToolResult│   │   └─ tool: openai_chat  │  delta chunks   │                   │
+│                      │  CallToolResult│   │   └─ tool: completion_chat │  delta chunks   │                   │
 └──────────────────────┘                │   └─ accumulate stream      │                 └───────────────────┘
                                         │       → single text content │
                                         └─────────────────────────────┘
@@ -53,7 +53,7 @@ sources in the [Reference index](#reference-index).
 
 1. The MCP host sends `Authorization: Bearer <RELAY_AUTH_TOKEN>` plus a `tools/call` JSON-RPC message via `POST /api/mcp`.
 2. `withMcpAuth` compares the header token to the `RELAY_AUTH_TOKEN` env var in constant time (timing-safe).
-3. `mcp-handler` parses the JSON-RPC and invokes the `openai_chat` tool handler.
+3. `mcp-handler` parses the JSON-RPC and invokes the `completion_chat` tool handler.
 4. The tool handler validates input with zod → applies the server policy `max_tokens` ceiling → calls the `openai` SDK's `chat.completions.create({ stream: true, ... })` (with an `AbortController` attached).
 5. The upstream stream is accumulated as an async iterator (`for await (const chunk of stream)`).
 6. The accumulated text and `usage` metadata are serialized as a `CallToolResult`:
@@ -86,7 +86,7 @@ The non-streaming path uses the SDK default retry (2 attempts). **The streaming 
 
 ## 4. MCP tool definition
 
-### `openai_chat`
+### `completion_chat`
 
 Invokes OpenAI Chat Completions once and returns the accumulated text.
 
@@ -94,7 +94,7 @@ Invokes OpenAI Chat Completions once and returns the accumulated text.
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
-| `model` | `string` | ✅ | Checked against the server allowlist (`MODEL_ALLOWLIST` env, default `gpt-4o-mini,gpt-4o,gpt-4.1-mini,gpt-4.1`) |
+| `model` | `string` | ✅ | Forwarded as-is to the upstream Chat Completions endpoint |
 | `messages` | `Array<{role: "system"|"user"|"assistant", content: string}>` | ✅ | OpenAI Chat shape |
 | `temperature` | `number` (0~2) | ❌ | OpenAI default applies |
 | `max_tokens` | `number` (1~`MAX_OUTPUT_TOKENS_CEILING`, default 4096) | ❌ | Clamped to the server ceiling |
@@ -133,12 +133,12 @@ mcp-openai-relay/
 │   ├── openai-client.ts          # openai SDK instance (singleton)
 │   ├── auth.ts                   # bearer token verifyToken (timing-safe compare)
 │   └── tools/
-│       └── openai-chat.ts        # openai_chat tool handler + zod schema
+│       └── completion-chat.ts    # completion_chat tool handler + zod schema
 ├── doc/
 │   └── ARCHITECTURE.md           # this document
 ├── tests/
 │   ├── unit/
-│   │   └── openai-chat.test.ts
+│   │   └── completion-chat.test.ts
 │   └── integration/
 │       └── route.test.ts         # invokes route directly via Web Request → Response
 ├── CLAUDE.md                     # agent collaboration guide
@@ -209,8 +209,8 @@ mcp-openai-relay/
 | Key | Required | Secret | Description |
 |---|---|---|---|
 | `OPENAI_API_KEY` | ✅ | Sensitive | OpenAI API key. Recommend separate keys for Production/Preview. |
+| `OPENAI_BASE_URL` | ❌ | Plain | Override the OpenAI SDK base URL. Default: SDK built-in. Use to point at Azure OpenAI, a self-hosted vLLM/Ollama gateway, or a local mock. |
 | `RELAY_AUTH_TOKEN` | ✅ | Sensitive | Bearer token sent by the MCP host. 32+ random bytes. |
-| `MODEL_ALLOWLIST` | ❌ | Plain | CSV. Default: `gpt-4o-mini,gpt-4o,gpt-4.1-mini,gpt-4.1` |
 | `MAX_OUTPUT_TOKENS_CEILING` | ❌ | Plain | Integer. Default `4096`. Overrides caller's value. |
 | `REQUEST_TIMEOUT_MS` | ❌ | Plain | Integer. Default `60000`. OpenAI call timeout. |
 
@@ -248,7 +248,6 @@ On unauthenticated requests, `mcp-handler` automatically responds with 401 + `WW
 - Never echo `OPENAI_API_KEY` in responses, logs, or error messages.
 - Always compare bearer tokens with `timingSafeEqual`.
 - All tool inputs must be strictly validated with zod (use `.strict()`).
-- Reject any model that is not in `MODEL_ALLOWLIST`.
 - `max_tokens` accepts the caller's value but is clamped to the server ceiling.
 - `console` logs may include only metadata (model, token counts, latency, status). **Never log prompt/response bodies.**
 - Preview deployments are protected by Vercel Authentication (default).
@@ -268,7 +267,7 @@ These items are listed as v2 candidates in §11.
 
 | Layer | Tools | Scope |
 |---|---|---|
-| Unit | vitest + msw | The `openai_chat` tool handler — input validation, model allowlist, max_tokens clamp, error mapping |
+| Unit | vitest + msw | The `completion_chat` tool handler — input validation, max_tokens clamp, error mapping |
 | Integration | vitest, route invoked directly via Web `Request`/`Response` | Bearer auth (present/missing/invalid), MCP `tools/list` and `tools/call` JSON-RPC flows |
 | Manual E2E | MCP Inspector | Locally run `pnpm dev` → `npx @modelcontextprotocol/inspector` → Streamable HTTP, connect to `http://localhost:3000/api/mcp` |
 

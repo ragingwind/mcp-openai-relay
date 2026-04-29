@@ -17,7 +17,8 @@
     "test": "vitest run --passWithNoTests",
     "test:unit": "vitest run --project unit --passWithNoTests",
     "test:integration": "vitest run --project integration --passWithNoTests",
-    "verify": "node scripts/verify.mjs"
+    "verify": "node scripts/verify.mjs",
+    "inspect": "node scripts/mcp-inspect.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.29.0",

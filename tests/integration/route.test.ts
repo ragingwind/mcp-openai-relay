@@ -4,11 +4,11 @@
 // What "integration" means here (per plan OQ-3 / CLAUDE.md §7): the route
 // handler is invoked end-to-end through Next.js's exported HTTP method
 // surface (`POST`, `GET`, `DELETE`) with real Web `Request` and `Response`
-// instances, exercising mcp-handler + withMcpAuth + zod + the openai_chat
+// instances, exercising mcp-handler + withMcpAuth + zod + the completion_chat
 // tool wiring as one stack. Only the OpenAI HTTP boundary is mocked (MSW).
 // We never mock `mcp-handler` itself — that would defeat the purpose.
 //
-// MSW server lifecycle pattern (mirrored from tests/unit/openai-chat.test.ts):
+// MSW server lifecycle pattern (mirrored from tests/unit/completion-chat.test.ts):
 // MSW listens FIRST in beforeAll, then the route module is dynamically
 // imported. The openai SDK captures `fetch` at module construction inside
 // `lib/openai-client.ts`; if MSW patches `globalThis.fetch` AFTER that
@@ -90,7 +90,7 @@ function makeCallRequest(
       jsonrpc: "2.0",
       id: 1,
       method: "tools/call",
-      params: { name: "openai_chat", arguments: args },
+      params: { name: "completion_chat", arguments: args },
     }),
   };
   if (opts.signal) init.signal = opts.signal;
@@ -99,7 +99,7 @@ function makeCallRequest(
 
 /**
  * Build a `text/event-stream` body from a list of pre-stringified JSON chunks
- * (mirrors tests/unit/openai-chat.test.ts).
+ * (mirrors tests/unit/completion-chat.test.ts).
  */
 function sseStream(chunks: string[]): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
@@ -212,14 +212,14 @@ describe("route /api/mcp — bearer auth", () => {
 // =========================================================================
 
 describe("route /api/mcp — tools/list", () => {
-  // B4: returns exactly one tool, name "openai_chat"
-  it("P1: exposes a single tool named openai_chat", async () => {
+  // B4: returns exactly one tool, name "completion_chat"
+  it("P1: exposes a single tool named completion_chat", async () => {
     const res = await POST(makeListRequest());
     expect(res.status).toBe(200);
     const envelope = await readJsonRpcResponse(res);
     const tools = (envelope.result?.tools ?? []) as Array<{ name: string }>;
     expect(tools).toHaveLength(1);
-    expect(tools[0]?.name).toBe("openai_chat");
+    expect(tools[0]?.name).toBe("completion_chat");
   });
 
   // B5: tools/list response includes the input schema.
@@ -243,10 +243,10 @@ describe("route /api/mcp — tools/list", () => {
 });
 
 // =========================================================================
-// C: tools/call — happy path, allowlist, clamp (B6-B8)
+// C: tools/call — happy path, clamp (B6, B8)
 // =========================================================================
 
-describe("route /api/mcp — tools/call (happy + allowlist + clamp)", () => {
+describe("route /api/mcp — tools/call (happy + clamp)", () => {
   // B6: valid input → CallToolResult with accumulated text + structuredContent.usage
   it("P1: tools/call with valid input returns content + structuredContent.usage", async () => {
     server.use(
@@ -280,36 +280,6 @@ describe("route /api/mcp — tools/call (happy + allowlist + clamp)", () => {
       completion_tokens: 2,
       total_tokens: 6,
     });
-  });
-
-  // B7: model not in allowlist → SDK input-schema validation rejects.
-  //
-  // Two layers can reject a disallowed model:
-  //   1. The McpServer's pre-handler input validation, which wraps the
-  //      shape `{ model: zod.string().refine(...) }` and surfaces zod
-  //      failures as a JSON-RPC `error` envelope (code -32602).
-  //   2. The handler itself re-parses (defensive), and our handler lets
-  //      schema-violation throws propagate (per `lib/tools/openai-chat.ts`
-  //      comment) — which the SDK also wraps as an error envelope OR a
-  //      tool result with `isError: true` depending on SDK version.
-  //
-  // Either layer rejecting is correct; the assertion accepts both shapes
-  // so the test does not break across SDK upgrades.
-  it("D1: tools/call with disallowed model is rejected (error envelope or isError)", async () => {
-    const res = await POST(
-      makeCallRequest({
-        model: "gpt-9999-not-real",
-        messages: [{ role: "user", content: "hi" }],
-      }),
-    );
-    expect(res.status).toBe(200); // JSON-RPC errors still HTTP 200
-    const envelope = await readJsonRpcResponse(res);
-    const serialized = JSON.stringify(envelope);
-    const hasError = Boolean(envelope.error);
-    const result = envelope.result as unknown as CallToolResultLike | undefined;
-    const isToolError = result?.isError === true;
-    expect(hasError || isToolError).toBe(true);
-    expect(serialized).toMatch(/allowlist|invalid|model/i);
   });
 
   // B8: max_tokens above ceiling → silently clamped, response succeeds.
@@ -452,7 +422,7 @@ describe("route /api/mcp — tools/call (streaming + errors + cancel)", () => {
   // transport constructs an internal `new Request(...)` WITHOUT carrying
   // the original signal (index.mjs:321), so `extra.signal` inside the
   // tool callback does NOT receive the route-level abort. Tool-level abort
-  // propagation is covered by unit tests in tests/unit/openai-chat.test.ts
+  // propagation is covered by unit tests in tests/unit/completion-chat.test.ts
   // (B16a/B16b) where extra.signal is passed directly. This integration
   // test asserts only the route adapter's signal handling, which is the
   // boundary it owns.

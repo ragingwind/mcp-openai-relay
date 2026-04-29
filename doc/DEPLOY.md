@@ -84,9 +84,9 @@ Register every key for **both** Production and Preview environments. Use the
 
 | Key | Required | Production value | Preview value | Sensitive |
 |---|---|---|---|---|
-| `OPENAI_API_KEY` | ✅ | OpenAI project #1 key | OpenAI project #2 key (different project) | ✅ |
+| `OPENAI_API_KEY` | ✅ | upstream key #1 | upstream key #2 (different project / account) | ✅ |
 | `RELAY_AUTH_TOKEN` | ✅ | 32+ random bytes (prod-only) | 32+ random bytes (preview-only) | ✅ |
-| `MODEL_ALLOWLIST` | ❌ | operational policy CSV | same | — |
+| `OPENAI_BASE_URL` | ❌ | upstream base URL (omit for OpenAI default) | same or staging URL | — |
 | `MAX_OUTPUT_TOKENS_CEILING` | ❌ | `4096` | `4096` | — |
 | `REQUEST_TIMEOUT_MS` | ❌ | `60000` | `60000` | — |
 
@@ -115,7 +115,7 @@ vercel env add RELAY_AUTH_TOKEN preview --sensitive
 Register the optional plain env vars (only if you want to override defaults):
 
 ```bash
-vercel env add MODEL_ALLOWLIST production
+vercel env add OPENAI_BASE_URL production         # only if pointing at non-OpenAI upstream
 vercel env add MAX_OUTPUT_TOKENS_CEILING production
 vercel env add REQUEST_TIMEOUT_MS production
 # ...repeat for preview
@@ -174,7 +174,7 @@ In the Inspector UI:
 2. **URL**: `https://<your-project>.vercel.app/api/mcp`
 3. **Header**: `Authorization: Bearer <RELAY_AUTH_TOKEN>`
 4. Enter the **Proxy Session Token** from the Inspector's terminal output.
-5. **Connect** → in the Tools tab call `openai_chat` with `gpt-4o-mini` and a
+5. **Connect** → in the Tools tab call `completion_chat` with `gpt-4o-mini` and a
    short prompt; expect text + `usage` metadata.
 
 (Issue #8 formalizes this checklist in `doc/QA-MCP-INSPECTOR.md`.)
