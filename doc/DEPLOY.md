@@ -181,6 +181,84 @@ In the Inspector UI:
 
 ---
 
+## 5b. Docker (self-hosted container)
+
+If you cannot or do not want to run on Vercel, the relay ships a multi-stage
+`Dockerfile` at the repo root that produces a ~120 MB runtime image based on
+`node:20-alpine`, running as a non-root user (UID 1001) with a Node `fetch`
+HEALTHCHECK against `/api/mcp`.
+
+> The container is the relay process only. Configure your reverse proxy / load
+> balancer to allow long-running requests — there is no analogue of Vercel's
+> 300 s function timeout, so the upstream timeout becomes the operator's
+> responsibility. 300 s is a reasonable starting value if you want parity with
+> the Vercel deployment.
+
+### Build
+
+```bash
+docker build -t mcp-openai-relay .
+```
+
+Final image size should be under 200 MB. The build does not need real
+secrets — the `pnpm build` script injects build-time dummy values.
+
+### Run — inline `-e` flags
+
+```bash
+docker run --rm -p 3000:3000 \
+  -e OPENAI_API_KEY=sk-... \
+  -e RELAY_AUTH_TOKEN=$(openssl rand -hex 32) \
+  -e OPENAI_BASE_URL=https://your-gateway.example.com/v1 \
+  -e MAX_OUTPUT_TOKENS_CEILING=4096 \
+  -e REQUEST_TIMEOUT_MS=60000 \
+  mcp-openai-relay
+```
+
+`OPENAI_API_KEY` and `RELAY_AUTH_TOKEN` are required. `OPENAI_BASE_URL`,
+`MAX_OUTPUT_TOKENS_CEILING`, and `REQUEST_TIMEOUT_MS` are optional (see
+[`ARCHITECTURE.md` §7](./ARCHITECTURE.md#7-environment-variables) for defaults).
+
+### Run — `--env-file`
+
+Keep secrets in a file the operator manages (gitignored, locked-down perms):
+
+```bash
+docker run --rm -p 3000:3000 --env-file .env.production mcp-openai-relay
+```
+
+### HEALTHCHECK verification
+
+```bash
+docker inspect --format '{{.State.Health.Status}}' <container>
+```
+
+Expect `healthy` within ~30 s of start. The check sends `GET /api/mcp` and
+treats any non-5xx response as healthy (mcp-handler returns 405 to a bare GET,
+which proves the function reached).
+
+### Smoke test
+
+With the container running on port 3000:
+
+```bash
+pnpm inspect --url=http://localhost:3000/api/mcp --method=tools/list
+```
+
+Expect a single tool named `completion_chat`. For the full pre-PR procedure
+(C1–C6) see [`QA-MCP-INSPECTOR.md`](./QA-MCP-INSPECTOR.md).
+
+### Verifying no secrets baked
+
+```bash
+docker history mcp-openai-relay --no-trunc | grep -iE 'OPENAI_API_KEY|RELAY_AUTH_TOKEN'
+```
+
+Only the `pnpm build` script's dummy values (`build-dummy`, 32×`x`) should
+appear — never real credentials.
+
+---
+
 ## 6. Token rotation runbook (`RELAY_AUTH_TOKEN`)
 
 Run when:
