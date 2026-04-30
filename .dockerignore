@@ -1,13 +1,27 @@
+# Build artifacts and per-machine state
 node_modules
 .next
+coverage
+.DS_Store
+*.log
+
+# Secrets and per-machine config — must never enter the build context
 .env*
+.vercel
+.claude
+
+# Source-control + CI metadata
 .git
 .github
-.claude
-.vercel
-coverage
+
+# Project tests and docs are not needed at runtime — exclude to keep the
+# build context small and avoid bloating the runner image
 tests
 doc
-*.log
 *.md
-.DS_Store
+
+# Compose orchestration is operator-side only; not needed inside the image
+compose.yml
+compose.yaml
+docker-compose.yml
+docker-compose.yaml

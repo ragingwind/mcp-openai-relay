@@ -184,9 +184,15 @@ In the Inspector UI:
 ## 5b. Docker (self-hosted container)
 
 If you cannot or do not want to run on Vercel, the relay ships a multi-stage
-`Dockerfile` at the repo root that produces a ~120 MB runtime image based on
-`node:20-alpine`, running as a non-root user (UID 1001) with a Node `fetch`
-HEALTHCHECK against `/api/mcp`.
+`Dockerfile` at the repo root that produces a ~70 MB runtime image based on
+`node:20-alpine` (digest-pinned for supply-chain stability), running as a
+non-root user (UID 1001) with a Node `fetch` HEALTHCHECK against `/api/mcp`.
+
+> **Pinned base image.** `Dockerfile` references `node:20-alpine@sha256:...`
+> rather than the floating `node:20-alpine` tag. Floating tags can be silently
+> repointed by upstream, breaking reproducibility. Bump the digest deliberately
+> (`docker pull node:20-alpine && docker inspect node:20-alpine --format
+> '{{.RepoDigests}}'`) — do not unpin.
 
 > The container is the relay process only. Configure your reverse proxy / load
 > balancer to allow long-running requests — there is no analogue of Vercel's
@@ -256,6 +262,50 @@ docker history mcp-openai-relay --no-trunc | grep -iE 'OPENAI_API_KEY|RELAY_AUTH
 
 Only the `pnpm build` script's dummy values (`build-dummy`, 32×`x`) should
 appear — never real credentials.
+
+---
+
+## 5c. Docker Compose (single-command launch)
+
+For local development or single-host self-hosting, `compose.yml` at the repo
+root wraps the same Dockerfile with a one-line lifecycle.
+
+### One-shot
+
+```bash
+cp .env.example .env.local           # then fill OPENAI_API_KEY + RELAY_AUTH_TOKEN
+docker compose up -d                  # builds on first run, then starts
+```
+
+The relay is reachable at `http://localhost:3000/api/mcp`. `restart:
+unless-stopped` keeps it running across reboots.
+
+### Lifecycle
+
+```bash
+docker compose up -d                  # build + start (detached)
+docker compose ps                     # status + health
+docker compose logs -f relay          # follow logs
+docker compose down                   # stop and remove the container
+docker compose up -d --build          # rebuild after Dockerfile / source changes
+```
+
+### Smoke
+
+```bash
+pnpm inspect --url=http://localhost:3000/api/mcp --method=tools/list
+```
+
+### Env contract
+
+`compose.yml` reads `.env.local` via `env_file:` and forwards every key into
+the container's process env. The same env contract from §5b applies
+(`OPENAI_API_KEY` + `RELAY_AUTH_TOKEN` required; `OPENAI_BASE_URL` /
+`MAX_OUTPUT_TOKENS_CEILING` / `REQUEST_TIMEOUT_MS` optional).
+
+> Compose does NOT replace the production runbook. For multi-host or managed
+> orchestration use Kubernetes / a PaaS — `compose.yml` is for single-host
+> self-hosting and local development.
 
 ---
 
