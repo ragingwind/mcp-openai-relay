@@ -2,6 +2,8 @@
   "name": "mcp-openai-relay",
   "private": true,
   "type": "module",
+  "license": "MIT",
+  "author": "Jimmy Moon <ragingwind@gmail.com>",
   "packageManager": "pnpm@9.15.0",
   "engines": {
     "node": ">=20.0.0 <21.0.0"

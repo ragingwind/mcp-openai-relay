@@ -185,4 +185,4 @@ pnpm inspect             # ad-hoc tools/call (wraps MCP Inspector CLI)
 
 ## License
 
-TBD
+MIT — see [LICENSE](./LICENSE).
