@@ -3,7 +3,7 @@ services:
     build: .
     image: mcp-openai-relay
     ports:
-      - "3000:3000"
+      - "${HOST_PORT:-3939}:3000"
     env_file:
       - .env.local
     restart: unless-stopped

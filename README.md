@@ -26,17 +26,19 @@ cp .env.example .env.local
 docker compose up -d
 ```
 
-The MCP endpoint is now at `http://localhost:3000/api/mcp`. Connect from any
+The MCP endpoint is now at `http://localhost:3939/api/mcp`. Connect from any
 MCP host:
 
 ```bash
 claude mcp add --transport http openai-relay \
-  http://localhost:3000/api/mcp \
+  http://localhost:3939/api/mcp \
   --header "Authorization: Bearer <RELAY_AUTH_TOKEN value>"
 ```
 
-Stop with `docker compose down`. For other deployment paths (raw `docker run`,
-Vercel serverless), see [Deployment options](#deployment-options) below.
+Stop with `docker compose down`. The host port defaults to `3939` to avoid
+clashing with the typical Next.js / Node `:3000`; override with `HOST_PORT=...
+docker compose up -d`. For other deployment paths (raw `docker run`, Vercel
+serverless), see [Deployment options](#deployment-options) below.
 
 ---
 
@@ -113,7 +115,7 @@ Or raw `docker run`:
 
 ```bash
 docker build -t mcp-openai-relay .
-docker run --rm -p 3000:3000 \
+docker run --rm -p 3939:3000 \
   -e OPENAI_API_KEY=sk-... -e RELAY_AUTH_TOKEN=$(openssl rand -hex 32) \
   mcp-openai-relay
 ```

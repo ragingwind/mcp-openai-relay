@@ -212,7 +212,7 @@ secrets — the `pnpm build` script injects build-time dummy values.
 ### Run — inline `-e` flags
 
 ```bash
-docker run --rm -p 3000:3000 \
+docker run --rm -p 3939:3000 \
   -e OPENAI_API_KEY=sk-... \
   -e RELAY_AUTH_TOKEN=$(openssl rand -hex 32) \
   -e OPENAI_BASE_URL=https://your-gateway.example.com/v1 \
@@ -220,6 +220,10 @@ docker run --rm -p 3000:3000 \
   -e REQUEST_TIMEOUT_MS=60000 \
   mcp-openai-relay
 ```
+
+The container listens on port `3000` internally; the host-side mapping
+defaults to `3939` to avoid clashing with the typical Next.js / Node `:3000`.
+Pick any free host port you prefer (`-p 9876:3000`, etc.).
 
 `OPENAI_API_KEY` and `RELAY_AUTH_TOKEN` are required. `OPENAI_BASE_URL`,
 `MAX_OUTPUT_TOKENS_CEILING`, and `REQUEST_TIMEOUT_MS` are optional (see
@@ -230,7 +234,7 @@ docker run --rm -p 3000:3000 \
 Keep secrets in a file the operator manages (gitignored, locked-down perms):
 
 ```bash
-docker run --rm -p 3000:3000 --env-file .env.production mcp-openai-relay
+docker run --rm -p 3939:3000 --env-file .env.production mcp-openai-relay
 ```
 
 ### HEALTHCHECK verification
@@ -245,10 +249,10 @@ which proves the function reached).
 
 ### Smoke test
 
-With the container running on port 3000:
+With the container running (default host port `3939`):
 
 ```bash
-pnpm inspect --url=http://localhost:3000/api/mcp --method=tools/list
+pnpm inspect --url=http://localhost:3939/api/mcp --method=tools/list
 ```
 
 Expect a single tool named `completion_chat`. For the full pre-PR procedure
@@ -277,8 +281,21 @@ cp .env.example .env.local           # then fill OPENAI_API_KEY + RELAY_AUTH_TOK
 docker compose up -d                  # builds on first run, then starts
 ```
 
-The relay is reachable at `http://localhost:3000/api/mcp`. `restart:
+The relay is reachable at `http://localhost:3939/api/mcp`. `restart:
 unless-stopped` keeps it running across reboots.
+
+### Host port override
+
+The host-side port defaults to **`3939`** (chosen to avoid conflicts with the
+common Next.js / Node `:3000`). To map the relay to a different host port,
+set `HOST_PORT`:
+
+```bash
+HOST_PORT=9876 docker compose up -d   # → http://localhost:9876/api/mcp
+```
+
+The container always listens on `3000` internally — only the host-side
+mapping changes.
 
 ### Lifecycle
 
@@ -293,7 +310,7 @@ docker compose up -d --build          # rebuild after Dockerfile / source change
 ### Smoke
 
 ```bash
-pnpm inspect --url=http://localhost:3000/api/mcp --method=tools/list
+pnpm inspect --url=http://localhost:3939/api/mcp --method=tools/list
 ```
 
 ### Env contract
