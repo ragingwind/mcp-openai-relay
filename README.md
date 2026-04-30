@@ -1,15 +1,42 @@
 # mcp-openai-relay
 
 A relay server that exposes the OpenAI Chat Completions API as an
-[MCP (Model Context Protocol)](https://modelcontextprotocol.io) tool.
-Deployed as a **Vercel serverless function**.
+[MCP (Model Context Protocol)](https://modelcontextprotocol.io) tool. Runs on
+**Vercel** (serverless) or as a **Docker container** (self-hosted).
 
 When you register this server with an MCP host such as Claude Code, the host's
 LLM can call OpenAI models as if they were tools.
 
 ```
-[ MCP host (Claude Code) ]  --bearer-->  [ Vercel: this server ]  --API key-->  [ OpenAI ]
+[ MCP host (Claude Code) ]  --bearer-->  [ this relay ]  --API key-->  [ OpenAI / compatible upstream ]
 ```
+
+---
+
+## Quick start (Docker Compose)
+
+The fastest way to run the relay locally or on a single host:
+
+```bash
+git clone https://github.com/ragingwind/mcp-openai-relay.git
+cd mcp-openai-relay
+cp .env.example .env.local
+#   Fill OPENAI_API_KEY and RELAY_AUTH_TOKEN (32+ bytes)
+#   Token: openssl rand -hex 32
+docker compose up -d
+```
+
+The MCP endpoint is now at `http://localhost:3000/api/mcp`. Connect from any
+MCP host:
+
+```bash
+claude mcp add --transport http openai-relay \
+  http://localhost:3000/api/mcp \
+  --header "Authorization: Bearer <RELAY_AUTH_TOKEN value>"
+```
+
+Stop with `docker compose down`. For other deployment paths (raw `docker run`,
+Vercel serverless), see [Deployment options](#deployment-options) below.
 
 ---
 
@@ -20,15 +47,14 @@ LLM can call OpenAI models as if they were tools.
 
 ---
 
-## Quick start
+## Deployment options
 
 ### Requirements
-- Node.js `20.x`
-- pnpm `^9`
-- An OpenAI API key
-- (Deployment) A Vercel account (Pro recommended — function `maxDuration 300s`)
+- An OpenAI (or OpenAI-compatible) API key
+- A 32+ byte bearer token (`openssl rand -hex 32`)
+- One of: **Docker** (recommended for self-host), **Node.js 20.x + pnpm 9** (for local dev), or a **Vercel Pro account** (for serverless)
 
-### Local run
+### Local run (Node.js)
 
 ```bash
 pnpm install
@@ -76,6 +102,15 @@ cancellation), see [`doc/QA-MCP-INSPECTOR.md`](./doc/QA-MCP-INSPECTOR.md).
 
 ### Docker (self-hosted)
 
+Compose (one command, recommended):
+
+```bash
+cp .env.example .env.local        # fill OPENAI_API_KEY + RELAY_AUTH_TOKEN
+docker compose up -d
+```
+
+Or raw `docker run`:
+
 ```bash
 docker build -t mcp-openai-relay .
 docker run --rm -p 3000:3000 \
@@ -83,7 +118,8 @@ docker run --rm -p 3000:3000 \
   mcp-openai-relay
 ```
 
-See [`doc/DEPLOY.md` §5b](./doc/DEPLOY.md#5b-docker-self-hosted-container) for the full container runbook.
+Full container runbook (env contract, healthcheck, smoke, secrets check, compose lifecycle):
+[`doc/DEPLOY.md` §5b](./doc/DEPLOY.md#5b-docker-self-hosted-container) and [§5c](./doc/DEPLOY.md#5c-docker-compose-single-command-launch).
 
 ### Vercel deployment
 
