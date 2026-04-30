@@ -74,6 +74,17 @@ Flags fall back to `process.env` then `.env.local`: `MCP_URL`, `MCP_TOOL`,
 For the full five-scenario manual procedure (including C4 clamp and C6
 cancellation), see [`doc/QA-MCP-INSPECTOR.md`](./doc/QA-MCP-INSPECTOR.md).
 
+### Docker (self-hosted)
+
+```bash
+docker build -t mcp-openai-relay .
+docker run --rm -p 3000:3000 \
+  -e OPENAI_API_KEY=sk-... -e RELAY_AUTH_TOKEN=$(openssl rand -hex 32) \
+  mcp-openai-relay
+```
+
+See [`doc/DEPLOY.md` §5b](./doc/DEPLOY.md#5b-docker-self-hosted-container) for the full container runbook.
+
 ### Vercel deployment
 
 Quick path:

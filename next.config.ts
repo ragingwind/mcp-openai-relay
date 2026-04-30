@@ -11,6 +11,7 @@ import type { NextConfig } from "next";
 // "webpack config without turbopack config" build error in Next 16.
 const config: NextConfig = {
   outputFileTracingRoot: __dirname,
+  output: "standalone",
   turbopack: {},
 };
 
