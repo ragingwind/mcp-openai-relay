@@ -6,6 +6,26 @@ the project adheres to [Semantic Versioning](https://semver.org/) once
 v1.0 ships. Pre-v1.0 minor bumps may include breaking changes — read
 this file before upgrading.
 
+## [Unreleased]
+
+### Changed
+
+- **`ai-relay-cli` binary removed.** `ai-relay` now auto-dispatches to
+  one-shot CLI mode when ≥2 positionals are supplied (`<provider> <tool>`),
+  and stays in MCP stdio server mode when only 1 positional is given.
+
+  ```bash
+  # MCP stdio server (unchanged)
+  npx ai-relay openai -m gpt-4o-mini
+
+  # One-shot CLI (was: npx --package=ai-relay ai-relay-cli openai chat-completions …)
+  npx ai-relay openai chat-completions -m gpt-4o-mini "ping"
+  ```
+
+  Migration: replace every `ai-relay-cli <provider> <tool>` invocation
+  with `ai-relay <provider> <tool>`. All flags and input forms are
+  identical.
+
 ## [0.11.0] — 2026-05-14
 
 ### Added
