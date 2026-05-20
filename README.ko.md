@@ -10,8 +10,8 @@
 
 | Provider | CLI / bin | SDK 서브패스 | 비고 |
 |---|---|---|---|
-| OpenAI Chat Completions | `ai-relay openai` / `ai-relay-cli openai chat-completions` | [`ai-relay/openai`](./packages/ai-relay/README.md) | OpenAI 호환 업스트림 전반 (Azure, vLLM, Ollama, OpenRouter, AI Gateway) |
-| Anthropic Messages | `ai-relay anthropic` / `ai-relay-cli anthropic messages` | [`ai-relay/anthropic`](./packages/ai-relay/README.md#anthropic-messages) | `max_tokens` 기본 1024, `temperature` 범위 0..1 |
+| OpenAI Chat Completions | `ai-relay openai` (MCP) / `ai-relay openai chat-completions` (단발 CLI) | [`ai-relay/openai`](./packages/ai-relay/README.md) | OpenAI 호환 업스트림 전반 (Azure, vLLM, Ollama, OpenRouter, AI Gateway) |
+| Anthropic Messages | `ai-relay anthropic` (MCP) / `ai-relay anthropic messages` (단발 CLI) | [`ai-relay/anthropic`](./packages/ai-relay/README.md#anthropic-messages) | `max_tokens` 기본 1024, `temperature` 범위 0..1 |
 
 > 배포된 프로세스는 한 번에 하나의 provider만 사용해야 합니다(ADR D8, [`doc/ARCHITECTURE.md`](./doc/ARCHITECTURE.md) 참고). 두 provider를 동시에 노출하려면 ai-relay 프로세스를 두 개 띄우세요.
 
@@ -23,10 +23,10 @@
 
 ```bash
 # OpenAI
-AI_RELAY_API_KEY=sk-... npx ai-relay-cli openai chat-completions -m gpt-4o-mini "ping"
+AI_RELAY_API_KEY=sk-... npx ai-relay openai chat-completions -m gpt-4o-mini "ping"
 
 # Anthropic
-AI_RELAY_API_KEY=sk-ant-... npx ai-relay-cli anthropic messages -m claude-sonnet-4-5 "ping"
+AI_RELAY_API_KEY=sk-ant-... npx ai-relay anthropic messages -m claude-sonnet-4-5 "ping"
 ```
 
 (`-m`은 CLI가 이번 호출에 사용할 모델을 서버 측 설정으로 박는 옵션입니다. MCP `tools/call` 인자로 전송되는 값이 **아닙니다**.)
@@ -80,26 +80,26 @@ await server.connect(new StdioServerTransport());
 
 ## 1. 단발 CLI
 
-호출 형식: `ai-relay-cli <provider> <tool> [flags] [input]`. 현재 `<provider>`는 `openai`, `<tool>`은 `chat-completions`. **모델과 샘플링 파라미터는 서버 사이드 설정** — `-m`/`--model`/`--temperature`/`--max-tokens`/`--top-p`/`--stop` 플래그 또는 대응되는 `AI_RELAY_*` env로 지정합니다. 입력은 위치 인자 또는 stdin 파이프 둘 중 하나(XOR); 평문은 `{messages:[{role:"user",content:…}]}`로 감싸지고, JSON 리터럴(`{` / `[`)은 그대로 전달되지만 `messages` 외 키는 `.strict()`가 거부합니다.
+호출 형식: `ai-relay <provider> <tool> [flags] [input]`. 현재 `<provider>`는 `openai`, `<tool>`은 `chat-completions`. **모델과 샘플링 파라미터는 서버 사이드 설정** — `-m`/`--model`/`--temperature`/`--max-tokens`/`--top-p`/`--stop` 플래그 또는 대응되는 `AI_RELAY_*` env로 지정합니다. 입력은 위치 인자 또는 stdin 파이프 둘 중 하나(XOR); 평문은 `{messages:[{role:"user",content:…}]}`로 감싸지고, JSON 리터럴(`{` / `[`)은 그대로 전달되지만 `messages` 외 키는 `.strict()`가 거부합니다.
 
 ```bash
 # 평문 입력 (자동으로 {messages:[…]} 로 감싸짐)
-npx ai-relay-cli openai chat-completions -m gpt-4o-mini "ping"
+npx ai-relay openai chat-completions -m gpt-4o-mini "ping"
 
 # JSON 입력 (messages만 — model 은 payload 가 아니라 flag/env 로)
-npx ai-relay-cli openai chat-completions -m gpt-4o-mini \
+npx ai-relay openai chat-completions -m gpt-4o-mini \
   '{"messages":[{"role":"user","content":"ping"}]}'
 
 # stdin + 시스템 프롬프트 + 샘플링 오버라이드
 echo "explain TLS in 2 sentences" \
-  | npx ai-relay-cli openai chat-completions -m gpt-4o-mini --temperature 0.2 -s "be terse"
+  | npx ai-relay openai chat-completions -m gpt-4o-mini --temperature 0.2 -s "be terse"
 
 # Azure OpenAI / vLLM / Ollama / AI Gateway 같은 OpenAI 호환 엔드포인트
-npx ai-relay-cli openai chat-completions -m gpt-4o-mini \
+npx ai-relay openai chat-completions -m gpt-4o-mini \
   --api-key sk-... --base-url https://my-azure.openai.azure.com/v1 "ping"
 ```
 
-전체 플래그는 `npx ai-relay-cli --help`. `-v` / `--verbose` (또는 `AI_RELAY_VERBOSE=1`)로 각 단계를 stderr로 추적; 시크릿은 마스킹되고 stdout JSON은 오염되지 않습니다.
+전체 플래그는 `npx ai-relay --help`. `-v` / `--verbose` (또는 `AI_RELAY_VERBOSE=1`)로 각 단계를 stderr로 추적; 시크릿은 마스킹되고 stdout JSON은 오염되지 않습니다.
 
 ---
 

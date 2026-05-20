@@ -1,4 +1,4 @@
-// Verbose stderr logger for the `ai-relay` and `ai-relay-cli` bins.
+// Verbose stderr logger for the `ai-relay` bin.
 //
 // Activated by `--verbose` / `-v` on either bin, or by setting the
 // `AI_RELAY_VERBOSE` environment variable to a truthy value

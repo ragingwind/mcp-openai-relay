@@ -4,6 +4,7 @@
 // is exercised by tests/integration/bin-tarball.test.ts.
 
 import { createRequire } from "node:module";
+import { Readable } from "node:stream";
 import { describe, expect, it } from "vitest";
 import { type AiRelayIO, main, VERSION } from "../../src/bin/ai-relay.js";
 
@@ -22,6 +23,12 @@ function makeIO(env: Record<string, string | undefined> = {}): CapturedIO {
     stdout,
     stderr,
     io: {
+      stdin: new Readable({
+        read() {
+          this.push(null);
+        },
+      }),
+      stdinIsTTY: true,
       stdout: {
         write(s) {
           stdout.value += s;
@@ -33,6 +40,7 @@ function makeIO(env: Record<string, string | undefined> = {}): CapturedIO {
         },
       },
       env,
+      isTTY: false,
     },
   };
 }
@@ -105,11 +113,11 @@ describe("ai-relay — usage / registry errors", () => {
     expect(cap.stderr.value).toContain("unknown flag: -x");
   });
 
-  it("D5: more than one positional rejected", async () => {
+  it("D5: two positionals routes to CLI mode — unknown tool reported", async () => {
     const cap = makeIO();
     const code = await main(["openai", "extra"], cap.io);
     expect(code).toBe(2);
-    expect(cap.stderr.value).toContain("usage: ai-relay <provider>");
+    expect(cap.stderr.value).toContain("unknown tool for provider openai");
   });
 
   it("D6: --max-tokens with non-integer rejected (before registry lookup)", async () => {
@@ -133,5 +141,28 @@ describe("ai-relay — config / env-file errors", () => {
     const code = await main(["openai", "--env", "/no/such/file.env"], cap.io);
     expect(code).toBe(2);
     expect(cap.stderr.value).toContain("cannot read --env file");
+  });
+});
+
+describe("ai-relay — CLI mode auto-dispatch", () => {
+  it("A1: two positionals (provider + unknown tool) routes to CLI, reports tool error", async () => {
+    const cap = makeIO();
+    const code = await main(["openai", "not-a-tool", "hi"], cap.io);
+    expect(code).toBe(2);
+    expect(cap.stderr.value).toContain("unknown tool for provider openai: not-a-tool");
+  });
+
+  it("A2: one positional stays in MCP server mode — config error on missing key", async () => {
+    const cap = makeIO({});
+    const code = await main(["openai"], cap.io);
+    expect(code).toBe(2);
+    expect(cap.stderr.value.toLowerCase()).toContain("apikey");
+  });
+
+  it("A3: value flags between positionals counted correctly — two positionals → CLI mode", async () => {
+    const cap = makeIO();
+    const code = await main(["openai", "--model", "x", "not-a-tool"], cap.io);
+    expect(code).toBe(2);
+    expect(cap.stderr.value).toContain("unknown tool for provider openai: not-a-tool");
   });
 });

@@ -27,7 +27,7 @@ import {
 
 export { VERSION };
 
-const USAGE = `Usage: ai-relay-cli <provider> <tool> [flags] [input]
+const USAGE = `Usage: ai-relay <provider> <tool> [flags] [input]
 
 Positionals:
   <provider>              Upstream provider (e.g. openai)
@@ -61,13 +61,13 @@ Flags:
   -V, --version           Print SDK version
 
 Examples:
-  ai-relay-cli openai chat-completions -m gpt-4o-mini "ping"
-  ai-relay-cli openai chat-completions --model gpt-4o-mini -s "be terse" "explain TLS"
-  ai-relay-cli openai chat-completions -m gpt-4o-mini --temperature 0.2 "ping"
-  AI_RELAY_MODEL=gpt-4o-mini ai-relay-cli openai chat-completions "ping"
-  echo '{"messages":[…]}' | ai-relay-cli openai chat-completions -m gpt-4o-mini
+  ai-relay openai chat-completions -m gpt-4o-mini "ping"
+  ai-relay openai chat-completions --model gpt-4o-mini -s "be terse" "explain TLS"
+  ai-relay openai chat-completions -m gpt-4o-mini --temperature 0.2 "ping"
+  AI_RELAY_MODEL=gpt-4o-mini ai-relay openai chat-completions "ping"
+  echo '{"messages":[…]}' | ai-relay openai chat-completions -m gpt-4o-mini
 
-Tip: \`ai-relay <provider>\` (without -cli) starts the MCP stdio server.
+Tip: \`ai-relay <provider>\` (without a tool) starts the MCP stdio server.
 `;
 
 export interface RunIO {

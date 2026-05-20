@@ -4,6 +4,7 @@
 
 import { realpathSync } from "node:fs";
 import { readFile } from "node:fs/promises";
+import type { Readable } from "node:stream";
 import { pathToFileURL } from "node:url";
 import type { AnthropicProviderConfig, OpenAIProviderConfig, Provider } from "../config.js";
 import { loadConfig } from "../config.js";
@@ -17,8 +18,9 @@ import {
   snapshotRelayEnv,
 } from "./logger.js";
 import { startMcpServer } from "./mcp-server.js";
-import { type ParsedMcpInvocation, parseMcpArgv, UsageError } from "./parse.js";
+import { countPositionals, type ParsedMcpInvocation, parseMcpArgv, UsageError } from "./parse.js";
 import { providerNames, resolveProvider } from "./registry.js";
+import { run } from "./run.js";
 
 export { VERSION };
 
@@ -58,7 +60,9 @@ Example claude_desktop_config.json:
     }
   }
 
-For one-shot CLI invocation (no MCP server), use \`ai-relay-cli\`.
+For one-shot CLI invocation, pass a tool name as the second positional:
+  ai-relay openai chat-completions -m gpt-4o-mini "ping"
+  echo '{"messages":[...]}' | ai-relay openai chat-completions -m gpt-4o-mini
 `;
 
 const USAGE_NO_PROVIDER = `error: <provider> positional is required
@@ -66,16 +70,22 @@ const USAGE_NO_PROVIDER = `error: <provider> positional is required
 usage: ai-relay <provider> [flags]
 providers: ${providerNames.join(", ")}
 
-For one-shot CLI invocation, use \`ai-relay-cli\`.
+For one-shot CLI invocation: ai-relay <provider> <tool> [flags] [input]
 `;
 
 export interface AiRelayIO {
+  stdin: Readable;
+  stdinIsTTY: boolean;
   stdout: { write(chunk: string): void };
   stderr: { write(chunk: string): void };
   env: Record<string, string | undefined>;
+  isTTY: boolean;
 }
 
 export async function main(argv: readonly string[], io: AiRelayIO): Promise<number> {
+  if (countPositionals(argv) >= 2) {
+    return run(argv, io);
+  }
   let parsed: ParsedMcpInvocation;
   try {
     parsed = parseMcpArgv(argv);
@@ -225,9 +235,12 @@ const isDirectInvocation = isDirectInvocationCheck();
 
 if (isDirectInvocation) {
   main(process.argv.slice(2), {
+    stdin: process.stdin,
+    stdinIsTTY: Boolean(process.stdin.isTTY),
     stdout: process.stdout,
     stderr: process.stderr,
     env: process.env,
+    isTTY: Boolean(process.stdout.isTTY),
   }).then(
     (code) => {
       if (code !== 0) process.exit(code);

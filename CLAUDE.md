@@ -122,13 +122,13 @@ Full tree: [`doc/ARCHITECTURE.md` §5](./doc/ARCHITECTURE.md#5-directory-structu
 | `AI_RELAY_REQUEST_TIMEOUT_MS` | ❌ | Plain, default `60000` |
 | `AI_RELAY_PORT` | ❌ | Plain, default `8787`; valid range 1..65535 |
 
-### CLI (consumed by `ai-relay` and `ai-relay-cli` bins in `packages/ai-relay/src/bin/`)
+### CLI (consumed by the `ai-relay` bin in `packages/ai-relay/src/bin/`)
 
-Both bins read the same `AI_RELAY_*` env keys as the server (model + sampling params). Flags always override env. See `--help` on either bin for the full list.
+The bin reads the same `AI_RELAY_*` env keys as the server (model + sampling params). Flags always override env. See `ai-relay --help` for the full list.
 
 | Key | Notes |
 |---|---|
-| `AI_RELAY_MODEL` | Required for `ai-relay <provider>` (MCP stdio launcher) and `ai-relay-cli` (one-shot CLI). Overridden by `-m` / `--model`. The MCP tool input does not accept a caller-supplied `model`. |
+| `AI_RELAY_MODEL` | Required for `ai-relay <provider>` (MCP stdio launcher) and `ai-relay <provider> <tool>` (one-shot CLI mode — auto-dispatched when ≥2 positionals are supplied). Overridden by `-m` / `--model`. The MCP tool input does not accept a caller-supplied `model`. |
 | `AI_RELAY_TEMPERATURE` / `AI_RELAY_MAX_TOKENS` / `AI_RELAY_TOP_P` / `AI_RELAY_STOP` | Forwarded to every upstream call when set. Overridden by `--temperature` / `--max-tokens` / `--top-p` / `--stop` flags. |
 
 ### Script-only (consumed by `scripts/mcp-inspect.mjs` and `scripts/verify.mjs`)

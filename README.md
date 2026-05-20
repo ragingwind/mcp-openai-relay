@@ -10,8 +10,8 @@
 
 | Provider | CLI / bin | SDK subpath | Notes |
 |---|---|---|---|
-| OpenAI Chat Completions | `ai-relay openai` / `ai-relay-cli openai chat-completions` | [`ai-relay/openai`](./packages/ai-relay/README.md) | Compatible with any OpenAI-shaped upstream: OpenAI, Azure, vLLM, Ollama, OpenRouter, AI Gateway |
-| Anthropic Messages | `ai-relay anthropic` / `ai-relay-cli anthropic messages` | [`ai-relay/anthropic`](./packages/ai-relay/README.md#anthropic-messages) | `max_tokens` defaults to 1024; `temperature` range 0..1 |
+| OpenAI Chat Completions | `ai-relay openai` (MCP) / `ai-relay openai chat-completions` (one-shot CLI) | [`ai-relay/openai`](./packages/ai-relay/README.md) | Compatible with any OpenAI-shaped upstream: OpenAI, Azure, vLLM, Ollama, OpenRouter, AI Gateway |
+| Anthropic Messages | `ai-relay anthropic` (MCP) / `ai-relay anthropic messages` (one-shot CLI) | [`ai-relay/anthropic`](./packages/ai-relay/README.md#anthropic-messages) | `max_tokens` defaults to 1024; `temperature` range 0..1 |
 
 > A deployed process MUST run a single provider at a time (ADR D8 in [`doc/ARCHITECTURE.md`](./doc/ARCHITECTURE.md)). Run two ai-relay processes side-by-side to expose both providers to one MCP host.
 
@@ -23,10 +23,10 @@
 
 ```bash
 # OpenAI
-AI_RELAY_API_KEY=sk-... npx ai-relay-cli openai chat-completions -m gpt-4o-mini "ping"
+AI_RELAY_API_KEY=sk-... npx ai-relay openai chat-completions -m gpt-4o-mini "ping"
 
 # Anthropic
-AI_RELAY_API_KEY=sk-ant-... npx ai-relay-cli anthropic messages -m claude-sonnet-4-5 "ping"
+AI_RELAY_API_KEY=sk-ant-... npx ai-relay anthropic messages -m claude-sonnet-4-5 "ping"
 ```
 
 (`-m` configures the model the CLI uses for this invocation; it is NOT sent in the MCP call arguments.)
@@ -80,26 +80,26 @@ await server.connect(new StdioServerTransport());
 
 ## 1. One-shot CLI
 
-Invocation: `ai-relay-cli <provider> <tool> [flags] [input]`. Today `<provider>` is `openai` and `<tool>` is `chat-completions`. **Model and sampling parameters are server-side configuration** — set them via `-m`/`--model`/`--temperature`/`--max-tokens`/`--top-p`/`--stop` flags or the matching `AI_RELAY_*` env vars. Input is either a positional or piped via stdin (XOR); plain text becomes `{messages:[{role:"user",content:…}]}`, JSON literals (`{` / `[`) pass through but MUST only contain `messages` (extra keys are rejected by `.strict()`).
+Invocation: `ai-relay <provider> <tool> [flags] [input]`. Today `<provider>` is `openai` and `<tool>` is `chat-completions`. **Model and sampling parameters are server-side configuration** — set them via `-m`/`--model`/`--temperature`/`--max-tokens`/`--top-p`/`--stop` flags or the matching `AI_RELAY_*` env vars. Input is either a positional or piped via stdin (XOR); plain text becomes `{messages:[{role:"user",content:…}]}`, JSON literals (`{` / `[`) pass through but MUST only contain `messages` (extra keys are rejected by `.strict()`).
 
 ```bash
 # Plain-text input (wrapped into {messages:[…]} automatically)
-npx ai-relay-cli openai chat-completions -m gpt-4o-mini "ping"
+npx ai-relay openai chat-completions -m gpt-4o-mini "ping"
 
 # JSON input (messages only — model lives in the flag/env, not the payload)
-npx ai-relay-cli openai chat-completions -m gpt-4o-mini \
+npx ai-relay openai chat-completions -m gpt-4o-mini \
   '{"messages":[{"role":"user","content":"ping"}]}'
 
 # Stdin pipe + system prompt + sampling override
 echo "explain TLS in 2 sentences" \
-  | npx ai-relay-cli openai chat-completions -m gpt-4o-mini --temperature 0.2 -s "be terse"
+  | npx ai-relay openai chat-completions -m gpt-4o-mini --temperature 0.2 -s "be terse"
 
 # Azure OpenAI / vLLM / Ollama / AI Gateway — any OpenAI-compatible endpoint
-npx ai-relay-cli openai chat-completions -m gpt-4o-mini \
+npx ai-relay openai chat-completions -m gpt-4o-mini \
   --api-key sk-... --base-url https://my-azure.openai.azure.com/v1 "ping"
 ```
 
-`npx ai-relay-cli --help` for the full flag list. `-v` / `--verbose` (or `AI_RELAY_VERBOSE=1`) traces each stage to stderr; secrets are redacted, stdout JSON stays clean.
+`npx ai-relay --help` for the full flag list. `-v` / `--verbose` (or `AI_RELAY_VERBOSE=1`) traces each stage to stderr; secrets are redacted, stdout JSON stays clean.
 
 ---
 

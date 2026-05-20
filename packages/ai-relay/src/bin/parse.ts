@@ -1,6 +1,6 @@
 // argv → ParsedInvocation. Pure module with no I/O.
 //
-// Surface: `ai-relay-cli <provider> <tool> [flags] [input]`
+// Surface: `ai-relay <provider> <tool> [flags] [input]`
 //
 // Long flags: --system -s, --model -m, --api-key, --base-url,
 //             --max-tokens, --temperature, --top-p, --stop,
@@ -211,13 +211,13 @@ export function parseArgv(argv: readonly string[]): ParsedInvocation {
   }
 
   if (positionals.length < 2) {
-    throw new UsageError("usage: ai-relay-cli <provider> <tool> [flags] [input]");
+    throw new UsageError("usage: ai-relay <provider> <tool> [flags] [input]");
   }
 
   const provider = positionals[0];
   const tool = positionals[1];
   if (provider === undefined || tool === undefined) {
-    throw new UsageError("usage: ai-relay-cli <provider> <tool> [flags] [input]");
+    throw new UsageError("usage: ai-relay <provider> <tool> [flags] [input]");
   }
   out.provider = provider;
   out.tool = tool;
@@ -384,4 +384,49 @@ export function parseMcpArgv(argv: readonly string[]): ParsedMcpInvocation {
   const first = positionals[0];
   if (first !== undefined) out.provider = first;
   return out;
+}
+
+export function countPositionals(argv: readonly string[]): number {
+  const ALL_VALUE_FLAGS = new Set([
+    "system",
+    "model",
+    "api-key",
+    "base-url",
+    "max-tokens",
+    "temperature",
+    "top-p",
+    "stop",
+    "timeout",
+    "env",
+  ]);
+  const VALUE_SHORTS = new Set(["s", "m"]);
+  let count = 0;
+  let pastDash = false;
+  for (let i = 0; i < argv.length; i++) {
+    const tok = argv[i];
+    if (tok === undefined) continue;
+    if (pastDash) {
+      count++;
+      continue;
+    }
+    if (tok === "--") {
+      pastDash = true;
+      continue;
+    }
+    if (tok.startsWith("--")) {
+      const body = tok.slice(2);
+      const eq = body.indexOf("=");
+      if (eq === -1 && ALL_VALUE_FLAGS.has(body)) i++;
+      continue;
+    }
+    if (tok.startsWith("-") && tok !== "-") {
+      const body = tok.slice(1);
+      const eq = body.indexOf("=");
+      const short = eq === -1 ? body : body.slice(0, eq);
+      if (eq === -1 && VALUE_SHORTS.has(short)) i++;
+      continue;
+    }
+    count++;
+  }
+  return count;
 }
