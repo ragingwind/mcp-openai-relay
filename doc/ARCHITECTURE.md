@@ -305,7 +305,7 @@ project that consumes `ai-relay` from npm (see `examples/vercel/README.md`).
 | `AI_RELAY_API_KEY` | ✅ | Sensitive | Upstream API key. Recommend separate keys for Production/Preview. |
 | `AI_RELAY_AUTH_TOKEN` | ✅ | Sensitive | Bearer token sent by the MCP host. 32+ random bytes. |
 | `AI_RELAY_MODEL` | ✅ | Plain | Upstream model id forwarded on every `tools/call`. The caller-facing tool input does not accept `model`. |
-| `AI_RELAY_BASE_URL` | ❌ | Plain | Override the upstream base URL. Default: SDK built-in. Use to point at Azure OpenAI, a self-hosted vLLM/Ollama gateway, or a local mock. |
+| `AI_RELAY_BASE_URL` | ❌ | Plain | Override the upstream base URL. Default: SDK built-in. Use to point at Azure OpenAI, a self-hosted vLLM/Ollama gateway, or a local mock. See [`examples/baseurl-recipes/`](../examples/baseurl-recipes/) for per-upstream configuration. |
 | `AI_RELAY_TEMPERATURE` | ❌ | Plain | Float. Range depends on provider: **0..2 for `openai`**, **0..1 for `anthropic`**. Forwarded as `temperature` to every upstream call when set. |
 | `AI_RELAY_MAX_TOKENS` | ❌ | Plain | Positive integer. Forwarded as `max_tokens` to every upstream call. No server-side clamp is applied — set conservatively. For `anthropic`: defaults to `1024` when omitted (Anthropic requires this field per call). |
 | `AI_RELAY_TOP_P` | ❌ | Plain | Float 0..1. Forwarded as `top_p` to every upstream call when set. |

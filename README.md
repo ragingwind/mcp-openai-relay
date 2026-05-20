@@ -154,6 +154,7 @@ Above is the stdio variant. The same `registerOpenAIChat` works in HTTP (Hono / 
 - [`examples/multi-upstream/`](./examples/multi-upstream/) — one server, multiple OpenAI-compatible upstreams
 - [`examples/cloudflare-workers/`](./examples/cloudflare-workers/) — Workers
 - [`examples/vercel/`](./examples/vercel/) — Vercel deploy of the Hono app
+- [`examples/baseurl-recipes/`](./examples/baseurl-recipes/) — OpenAI-compatible upstream configuration recipes (xAI, DeepSeek, Mistral, Ollama, OpenRouter, vLLM, LM Studio, Vercel AI Gateway)
 
 SDK API reference: [`packages/ai-relay/README.md`](./packages/ai-relay/README.md).
 
