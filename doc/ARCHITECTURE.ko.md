@@ -183,10 +183,9 @@ mcp-ai-relay/                              # 저장소 루트 — pnpm 워크스
 │       │   ├── index.ts                # 공개 re-export (auth)
 │       │   ├── auth.ts                 # verifyBearer (portable, node:crypto 불필요)
 │       │   ├── bin/
-│       │   │   ├── ai-relay.ts         # bin 진입점 — `ai-relay <provider>` MCP stdio 서버
-│       │   │   ├── ai-relay-cli.ts     # bin 진입점 — `ai-relay-cli <provider> <tool> [flags] [input]` 단발 실행
+│       │   │   ├── ai-relay.ts         # bin 진입점 — `ai-relay <provider>` MCP stdio 서버; 위치 인자가 2개 이상이면 `ai-relay <provider> <tool> [flags] [input]` 단발 CLI 모드로 자동 디스패치
 │       │   │   ├── mcp-server.ts       # startMcpServer({apiType,config}) — 순수 라이브러리 함수
-│       │   │   ├── run.ts              # 단발 CLI 오케스트레이터(ai-relay-cli에서 사용)
+│       │   │   ├── run.ts              # 단발 CLI 오케스트레이터(자동 디스패치된 CLI 모드에서 사용)
 │       │   │   ├── parse.ts            # parseArgv (CLI) + parseMcpArgv (MCP)
 │       │   │   ├── registry.ts         # api-type → {cli, registerMcp} 매핑
 │       │   │   └── env-file.ts         # 최소 dotenv 파서

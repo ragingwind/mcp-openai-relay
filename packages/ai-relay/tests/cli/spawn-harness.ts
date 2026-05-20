@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SDK_DIR = resolve(__dirname, "..", "..");
-const BIN_PATH = resolve(SDK_DIR, "dist", "bin", "ai-relay-cli.js");
+const BIN_PATH = resolve(SDK_DIR, "dist", "bin", "ai-relay.js");
 
 let buildPromise: Promise<void> | null = null;
 

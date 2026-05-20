@@ -184,10 +184,9 @@ mcp-ai-relay/                              # repo root — pnpm workspace orches
 │       │   ├── index.ts                # public re-exports (auth)
 │       │   ├── auth.ts                 # verifyBearer (portable, no node:crypto)
 │       │   ├── bin/
-│       │   │   ├── ai-relay.ts         # bin entry — `ai-relay <provider>` MCP stdio server
-│       │   │   ├── ai-relay-cli.ts     # bin entry — `ai-relay-cli <provider> <tool> [flags] [input]` one-shot
+│       │   │   ├── ai-relay.ts         # bin entry — `ai-relay <provider>` MCP stdio server; auto-dispatches to one-shot CLI when ≥2 positionals are passed (`ai-relay <provider> <tool> [flags] [input]`)
 │       │   │   ├── mcp-server.ts       # startMcpServer({apiType,config}) — pure library function
-│       │   │   ├── run.ts              # one-shot CLI orchestrator (used by ai-relay-cli)
+│       │   │   ├── run.ts              # one-shot CLI orchestrator (used by the auto-dispatched CLI mode)
 │       │   │   ├── parse.ts            # parseArgv (CLI) + parseMcpArgv (MCP)
 │       │   │   ├── registry.ts         # api-type → {cli, registerMcp} map
 │       │   │   └── env-file.ts         # minimal dotenv parser

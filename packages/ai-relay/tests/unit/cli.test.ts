@@ -1,4 +1,4 @@
-// Argv parser tests for `ai-relay-cli <provider> <tool> [flags] [input]`.
+// Argv parser tests for `ai-relay <provider> <tool> [flags] [input]`.
 
 import { describe, expect, it } from "vitest";
 import { parseArgv, parseMcpArgv, UsageError } from "../../src/bin/parse.js";
@@ -153,11 +153,11 @@ describe("parseMcpArgv — verbose flag", () => {
 describe("parseArgv — error paths", () => {
   it("D1: empty argv → usage error", () => {
     expect(() => parseArgv([])).toThrow(UsageError);
-    expect(() => parseArgv([])).toThrow(/usage: ai-relay-cli/);
+    expect(() => parseArgv([])).toThrow(/usage: ai-relay/);
   });
 
   it("D1b: single positional (provider only) rejected — tool is required", () => {
-    expect(() => parseArgv(["openai"])).toThrow(/usage: ai-relay-cli/);
+    expect(() => parseArgv(["openai"])).toThrow(/usage: ai-relay/);
   });
 
   it("D2: unknown long flag → UsageError", () => {

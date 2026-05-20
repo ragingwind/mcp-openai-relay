@@ -21,14 +21,14 @@ npm install ai-relay @modelcontextprotocol/sdk openai @anthropic-ai/sdk
 
 ## Quick reference
 
-**1. One-shot CLI** — `ai-relay-cli <provider> <tool> [flags] [input]`:
+**1. One-shot CLI** — `ai-relay <provider> <tool> [flags] [input]`:
 
 ```bash
 # OpenAI
-AI_RELAY_API_KEY=sk-... npx ai-relay-cli openai chat-completions -m gpt-4o-mini "ping"
+AI_RELAY_API_KEY=sk-... npx ai-relay openai chat-completions -m gpt-4o-mini "ping"
 
 # Anthropic
-AI_RELAY_API_KEY=sk-ant-... npx ai-relay-cli anthropic messages -m claude-sonnet-4-5 "ping"
+AI_RELAY_API_KEY=sk-ant-... npx ai-relay anthropic messages -m claude-sonnet-4-5 "ping"
 ```
 
 **2. stdio MCP server** — `ai-relay <provider>`, register in any MCP host:
@@ -93,17 +93,17 @@ registerOpenAIChat(server, {
 
 ---
 
-## 1. One-shot CLI (`ai-relay-cli`)
+## 1. One-shot CLI (`ai-relay`)
 
 Prints a single tool result as JSON on stdout, exits. Input is a positional argument or piped via stdin (XOR). A positional starting with `{` or `[` is parsed as JSON; anything else becomes a plain user message. Exit codes: `0` success, `1` runtime/upstream error, `2` usage error.
 
 ```bash
-ai-relay-cli openai chat-completions -m gpt-4o-mini "ping"
-ai-relay-cli openai chat-completions --model gpt-4o-mini -s "be terse" "explain TLS"
-ai-relay-cli openai chat-completions -m gpt-4o --temperature 0.2 \
+ai-relay openai chat-completions -m gpt-4o-mini "ping"
+ai-relay openai chat-completions --model gpt-4o-mini -s "be terse" "explain TLS"
+ai-relay openai chat-completions -m gpt-4o --temperature 0.2 \
   '{"messages":[{"role":"user","content":"ping"}]}'
-ai-relay-cli openai chat-completions -m gpt-4o-mini --base-url https://my-azure.openai.azure.com/v1 "ping"
-echo '{"messages":[…]}' | ai-relay-cli openai chat-completions -m gpt-4o-mini
+ai-relay openai chat-completions -m gpt-4o-mini --base-url https://my-azure.openai.azure.com/v1 "ping"
+echo '{"messages":[…]}' | ai-relay openai chat-completions -m gpt-4o-mini
 ```
 
 **Model resolution** (first match wins): `-m`/`--model` flag → `AI_RELAY_MODEL` env. The caller schema is `{ messages }` only and `.strict()` rejects extra keys, so JSON input cannot include a `model` field.

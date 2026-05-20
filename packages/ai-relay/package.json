@@ -34,8 +34,7 @@
     }
   },
   "bin": {
-    "ai-relay": "./dist/bin/ai-relay.js",
-    "ai-relay-cli": "./dist/bin/ai-relay-cli.js"
+    "ai-relay": "./dist/bin/ai-relay.js"
   },
   "files": [
     "dist",
@@ -43,7 +42,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && node -e \"const fs=require('node:fs');fs.chmodSync('dist/bin/ai-relay.js',0o755);fs.chmodSync('dist/bin/ai-relay-cli.js',0o755);\"",
+    "build": "tsc -p tsconfig.build.json && node -e \"const fs=require('node:fs');fs.chmodSync('dist/bin/ai-relay.js',0o755);\"",
     "build:watch": "tsc -p tsconfig.build.json --watch",
     "test": "vitest run --passWithNoTests",
     "test:bin": "vitest run tests/integration/bin-tarball.test.ts",

@@ -102,7 +102,7 @@ describe("run — usage errors short-circuit", () => {
     const cap = makeIO();
     const code = await run([], cap.io);
     expect(code).toBe(2);
-    expect(cap.stderr.value).toMatch(/usage: ai-relay-cli/);
+    expect(cap.stderr.value).toMatch(/usage: ai-relay/);
   });
 
   it("D2: unknown provider → exit 2", async () => {
@@ -138,7 +138,7 @@ describe("run — usage errors short-circuit", () => {
     const cap = makeIO();
     const code = await run(["-h"], cap.io);
     expect(code).toBe(0);
-    expect(cap.stdout.value).toContain("Usage: ai-relay-cli");
+    expect(cap.stdout.value).toContain("Usage: ai-relay <provider> <tool>");
   });
 
   it("D4: -V prints version on stdout, exit 0", async () => {
