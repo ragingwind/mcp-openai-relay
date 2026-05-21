@@ -228,7 +228,6 @@ describe("run — input handling", () => {
       "input JSON for chat-completions must be an object, not an array",
     );
   });
-
 });
 
 describe("run — model resolution", () => {
