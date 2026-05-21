@@ -1,7 +1,7 @@
 {
   "name": "ai-relay",
   "version": "0.11.0",
-  "description": "Provider-agnostic MCP relay SDK — embed Chat Completions, Anthropic Messages, and (future) Gemini / unified-gateway tools in any MCP server.",
+  "description": "Provider-agnostic MCP relay SDK — embed Chat Completions, Anthropic Messages, Google Gemini, and (future) unified-gateway tools in any MCP server.",
   "license": "MIT",
   "author": "Jimmy Moon <ragingwind@gmail.com>",
   "type": "module",
@@ -19,6 +19,10 @@
     "./anthropic": {
       "types": "./dist/anthropic/index.d.ts",
       "import": "./dist/anthropic/index.js"
+    },
+    "./google": {
+      "types": "./dist/google/index.d.ts",
+      "import": "./dist/google/index.js"
     },
     "./env": {
       "types": "./dist/config.d.ts",
@@ -54,11 +58,15 @@
   },
   "peerDependencies": {
     "@anthropic-ai/sdk": "^0.96.0",
+    "@google/genai": "^2.0.0",
     "@modelcontextprotocol/sdk": "^1.26",
     "openai": "^6"
   },
   "peerDependenciesMeta": {
     "@anthropic-ai/sdk": {
+      "optional": true
+    },
+    "@google/genai": {
       "optional": true
     },
     "openai": {
@@ -72,6 +80,7 @@
     "access": "public"
   },
   "devDependencies": {
-    "@anthropic-ai/sdk": "^0.96.0"
+    "@anthropic-ai/sdk": "^0.96.0",
+    "@google/genai": "^2.5.0"
   }
 }

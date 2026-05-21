@@ -33,7 +33,7 @@ export interface ProviderEntry {
   tools: Record<string, AnyTool>;
 }
 
-export type ProviderName = "openai" | "anthropic";
+export type ProviderName = "openai" | "anthropic" | "google";
 
 type Loader = () => Promise<ProviderEntry>;
 
@@ -57,6 +57,18 @@ const loaders: Record<ProviderName, Loader> = {
       registerOnServer: mod.registerAnthropicProvider,
       tools: {
         messages: mod.anthropicMessagesTool,
+      },
+    };
+  },
+  google: async () => {
+    const mod = (await import("../google/index.js")) as {
+      registerGoogleProvider: ProviderEntry["registerOnServer"];
+      googleGenerateContentTool: AnyTool;
+    };
+    return {
+      registerOnServer: mod.registerGoogleProvider,
+      tools: {
+        "generate-content": mod.googleGenerateContentTool,
       },
     };
   },
