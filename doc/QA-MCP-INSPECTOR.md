@@ -180,8 +180,9 @@ upstreams on one server).
 
 | # | Scenario | Steps | Expected result |
 |---|---|---|---|
-| **C1** | Tool list | In Inspector, switch to **Tools** tab | Single tool `chat-completions` is listed. Its input schema is `{ messages: Array<{role, content}> }` only (no `model` / `temperature` / `max_tokens` / `top_p` / `stop` fields) — `.strict()`. |
+| **C1** | Tool list | In Inspector, switch to **Tools** tab | Two tools are listed for the OpenAI provider: `chat-completions` and `responses`. Each tool's input schema is `{ messages: Array<{role, content}> }` only (no `model` / `temperature` / `max_tokens` / `top_p` / `stop` fields) — `.strict()`. |
 | **C2** | Happy path | Click **Run Tool** on `chat-completions`. Inputs: `messages: [{role: "user", content: "ping"}]` (only field accepted). | Response contains accumulated text in `result.content[0].text`. `result.structuredContent.model` matches the server's `AI_RELAY_MODEL`. `result.structuredContent.usage.total_tokens > 0`. `result.isError` is `false`. |
+| **C3** | Responses happy path | Click **Run Tool** on `responses`. Inputs: `messages: [{role: "user", content: "ping"}]`. Use a Responses-capable `AI_RELAY_MODEL` (e.g. `gpt-5`); optionally set `AI_RELAY_REASONING_EFFORT=medium` before restarting the dev server. | Response contains accumulated text in `result.content[0].text`. `result.structuredContent.model` matches the server's `AI_RELAY_MODEL`. `result.structuredContent.usage.total_tokens > 0`. `result.structuredContent.finish_reason` is `"completed"`. When the model emits a reasoning summary, `result.structuredContent.reasoning` is a non-empty string; otherwise the field is absent. `result.isError` is `false`. |
 | **C4** | Server-side sampling override | **Stop** the dev server. Restart with `AI_RELAY_MAX_TOKENS=64 AI_RELAY_TEMPERATURE=0.1 pnpm dev`. Re-run C2. | Response succeeds. Server stderr verbose log (`pnpm dev -v` or `AI_RELAY_VERBOSE=1`) shows `max_tokens: 64`, `temperature: 0.1` in the `openai-http-request` payload. Caller did not send these fields. |
 | **C5** | Bearer rejection | In Inspector, **Disconnect**, change the Header to `Authorization: Bearer wrong-token`, **Connect** | Connection fails with HTTP 401 + `WWW-Authenticate: Bearer` header. Reconnect with the correct token to continue. |
 | **C6** | Cancellation (manual) | Run C2 with a long prompt (e.g., "Write a 500-word essay about sourdough"). Mid-stream, **Disconnect** in the Inspector | Server logs show the SDK call aborted; OpenAI usage page (refreshed in ~1 minute) does NOT show full output cost. (Imprecise visual confirmation — manual observation only.) |
@@ -205,8 +206,9 @@ Commit:    <git rev-parse --short HEAD>
 Endpoint:  http://localhost:8787/api/mcp  (or production URL — see doc/DEPLOY.md §3)
 Model:     <AI_RELAY_MODEL value used by the server>
 
-C1 tools/list (messages-only schema) — PASS / FAIL  <one-line note>
+C1 tools/list (chat-completions + responses, messages-only schema) — PASS / FAIL  <one-line note>
 C2 chat-completions happy path       — PASS / FAIL  usage: {prompt_tokens: N, completion_tokens: N, total_tokens: N}
+C3 responses happy path              — PASS / FAIL  reasoning: <empty | non-empty> usage: {prompt_tokens: N, completion_tokens: N, total_tokens: N}
 C4 server-side sampling override     — PASS / FAIL  <one-line note>
 C5 wrong bearer 401                  — PASS / FAIL  <one-line note>
 C6 cancellation                      — PASS / FAIL  <one-line note>
