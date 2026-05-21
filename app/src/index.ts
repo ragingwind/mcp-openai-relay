@@ -11,8 +11,8 @@
 //   2. `withMcpAuth(handler, ...)` — bearer-token gate at `/api/mcp`.
 //      Unauthenticated requests get 401 + `WWW-Authenticate: Bearer ...`
 //      automatically.
-//   3. `createMcpHandler((server) => registerOpenAIChat(server, ...))` —
-//      registers the `chat-completions` tool on each request boundary.
+//   3. `createMcpHandler((server) => registerOpenAIProvider(server, ...))` —
+//      registers the `chat-completions` and `responses` tools on each request boundary.
 //
 // `app` is exported so integration tests can call `app.fetch(request)`
 // without booting an actual HTTP listener. The `import.meta.url` guard
@@ -23,7 +23,7 @@ import { pathToFileURL } from "node:url";
 import { serve } from "@hono/node-server";
 import { verifyBearer } from "ai-relay";
 import { createVerboseLogger, isVerboseEnv } from "ai-relay/logger";
-import { registerOpenAIChat } from "ai-relay/openai";
+import { registerOpenAIProvider } from "ai-relay/openai";
 import { Hono } from "hono";
 import { createMcpHandler, withMcpAuth } from "mcp-handler";
 import { parseEnv } from "./env.js";
@@ -37,7 +37,7 @@ const logger = createVerboseLogger({
 
 const handler = createMcpHandler(
   (server) => {
-    registerOpenAIChat(server, {
+    registerOpenAIProvider(server, {
       apiKey: env.AI_RELAY_API_KEY,
       ...(env.AI_RELAY_BASE_URL ? { baseURL: env.AI_RELAY_BASE_URL } : {}),
       model: env.AI_RELAY_MODEL,
@@ -45,6 +45,9 @@ const handler = createMcpHandler(
       ...(env.AI_RELAY_MAX_TOKENS !== undefined ? { max_tokens: env.AI_RELAY_MAX_TOKENS } : {}),
       ...(env.AI_RELAY_TOP_P !== undefined ? { top_p: env.AI_RELAY_TOP_P } : {}),
       ...(env.AI_RELAY_STOP !== undefined ? { stop: env.AI_RELAY_STOP } : {}),
+      ...(env.AI_RELAY_REASONING_EFFORT !== undefined
+        ? { reasoning_effort: env.AI_RELAY_REASONING_EFFORT }
+        : {}),
       requestTimeoutMs: env.AI_RELAY_REQUEST_TIMEOUT_MS,
       ...(logger.enabled ? { logger } : {}),
     });

@@ -48,6 +48,10 @@ const envSchema = z.object({
   ),
   AI_RELAY_TOP_P: z.preprocess(emptyToUndefined, z.coerce.number().min(0).max(1).optional()),
   AI_RELAY_STOP: stopListSchema,
+  AI_RELAY_REASONING_EFFORT: z.preprocess(
+    emptyToUndefined,
+    z.enum(["low", "medium", "high"]).optional(),
+  ),
   AI_RELAY_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
   AI_RELAY_PORT: z.coerce.number().int().min(1).max(65_535).default(8787),
 });
