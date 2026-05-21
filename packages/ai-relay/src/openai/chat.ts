@@ -253,19 +253,14 @@ export interface ToolDescriptor<C = unknown, B = unknown> {
   /** Make a handler bundle (schema + handler + names) for one config. */
   makeHandler: (config: C) => B;
   /** Optional CLI sugar: turn plain text into a JSON object the schema accepts. */
-  desugar?: (plain: string, opts: { system?: string }) => Record<string, unknown>;
+  desugar?: (plain: string) => Record<string, unknown>;
 }
 
 export const openAIChatTool: ToolDescriptor<OpenAIChatConfig, OpenAIChatHandlerBundle> = {
   provider: "openai",
   name: "chat-completions",
   makeHandler: makeOpenAIChatHandler,
-  desugar: (plain, opts) => {
-    const messages: Array<{ role: "system" | "user"; content: string }> = [];
-    if (opts.system) messages.push({ role: "system", content: opts.system });
-    messages.push({ role: "user", content: plain });
-    return { messages };
-  },
+  desugar: (plain) => ({ messages: [{ role: "user", content: plain }] }),
 };
 
 // --- internals ------------------------------------------------------------

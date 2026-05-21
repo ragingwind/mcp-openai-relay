@@ -2,23 +2,14 @@ import { describe, expect, it } from "vitest";
 import { makeOpenAIChatSchema, openAIChatTool } from "../../src/openai/index.js";
 
 describe("openAIChatTool.desugar — plain-text → input JSON", () => {
-  it("P1: bare string with no opts builds a single user message", () => {
-    expect(openAIChatTool.desugar?.("hi", {})).toEqual({
+  it("P1: bare string builds a single user message", () => {
+    expect(openAIChatTool.desugar?.("hi")).toEqual({
       messages: [{ role: "user", content: "hi" }],
     });
   });
 
-  it("P2: system option is prepended", () => {
-    expect(openAIChatTool.desugar?.("hi", { system: "be terse" })).toEqual({
-      messages: [
-        { role: "system", content: "be terse" },
-        { role: "user", content: "hi" },
-      ],
-    });
-  });
-
-  it("P3: desugar result passes the messages-only schema", () => {
-    const desugared = openAIChatTool.desugar?.("hi", {});
+  it("P2: desugar result passes the messages-only schema", () => {
+    const desugared = openAIChatTool.desugar?.("hi");
     expect(desugared).toBeDefined();
     const schema = makeOpenAIChatSchema();
     const parsed = schema.parse(desugared);

@@ -2,12 +2,12 @@
 
 > 한국어: [ARCHITECTURE.ko.md](./ARCHITECTURE.ko.md)
 
-A relay server that exposes the OpenAI Chat Completions API as an MCP
-(Model Context Protocol) tool. Shipped as a multi-arch Docker image
-(`ghcr.io/ragingwind/ai-relay`, amd64+arm64) built on a minimal Hono HTTP
-server. A community-supported Vercel recipe lives in `examples/vercel/`.
-When an MCP host such as Claude Code calls in, this server calls OpenAI
-and returns the response back to the host.
+A relay server that exposes upstream LLM APIs (OpenAI Chat Completions,
+Anthropic Messages) as MCP (Model Context Protocol) tools. Shipped as a
+multi-arch Docker image (`ghcr.io/ragingwind/ai-relay`, amd64+arm64) built
+on a minimal Hono HTTP server. A community-supported Vercel recipe lives in
+`examples/vercel/`. When an MCP host such as Claude Code calls in, this
+server calls the configured upstream and returns the response back to the host.
 
 This document is the single source of truth (SSOT) for v1 architecture.
 For background research, tradeoffs, and alternatives considered, see the
@@ -62,7 +62,7 @@ sources in the [Reference index](#reference-index).
 1. The MCP host sends `Authorization: Bearer <AI_RELAY_AUTH_TOKEN>` plus a `tools/call` JSON-RPC message via `POST /api/mcp`.
 2. `withMcpAuth` compares the header token to the `AI_RELAY_AUTH_TOKEN` env var in constant time (timing-safe).
 3. `mcp-handler` parses the JSON-RPC and invokes the `chat-completions` tool handler.
-4. The tool handler validates input with zod → applies the server policy `max_tokens` ceiling → calls the `openai` SDK's `chat.completions.create({ stream: true, ... })` (with an `AbortController` attached).
+4. The tool handler validates input with zod → calls the `openai` SDK's `chat.completions.create({ stream: true, ... })` (with an `AbortController` attached).
 5. The upstream stream is accumulated as an async iterator (`for await (const chunk of stream)`).
 6. The accumulated text and `usage` metadata are serialized as a `CallToolResult`:
    ```ts
@@ -124,7 +124,7 @@ The caller-facing surface is intentionally minimal — `model` and all sampling 
   structuredContent: {
     model: string,
     usage: { prompt_tokens: number, completion_tokens: number, total_tokens: number },
-    finish_reason: "stop" | "length" | "tool_calls" | "content_filter" | "function_call"
+    finish_reason: string
   }
 }
 ```
@@ -220,7 +220,10 @@ mcp-ai-relay/                              # repo root — pnpm workspace orches
 │       └── vercel.json                 # ex-root config (pins maxDuration + region)
 ├── .github/workflows/
 │   ├── ci.yml                          # typecheck + lint + build + test on PR
-│   └── release-app.yml                 # multi-arch buildx → ghcr push on `v*` tags
+│   ├── release-app.yml                 # multi-arch buildx → ghcr push on `v*` tags
+│   ├── docker-smoke.yml                # smoke test against built Docker image
+│   ├── examples-smoke.yml              # smoke test examples/ recipes
+│   └── runtime-matrix.yml             # pack tarball + Node/Bun/CJS smoke matrix
 ├── doc/
 │   ├── ARCHITECTURE.md                 # this document — design SSOT
 │   ├── DEPLOY.md                       # Docker + Vercel runbook
@@ -249,7 +252,7 @@ mcp-ai-relay/                              # repo root — pnpm workspace orches
 | Validation | `zod@^4` |
 | OpenAI SDK | `openai@^6` (optional peer dep) |
 | Anthropic SDK | `@anthropic-ai/sdk@^0.96.0` (optional peer dep) |
-| Runtime | Node.js `20.x` (alpine container; multi-arch amd64+arm64) |
+| Runtime | Node.js `20.x` (Distroless Debian 12 `nonroot` container; multi-arch amd64+arm64) |
 | Language | TypeScript strict, NodeNext ESM, `verbatimModuleSyntax: true` |
 | Package manager | pnpm `^9` (pinned via `packageManager`) |
 | Lint/Format | Biome `^2` |
@@ -320,18 +323,16 @@ Record keys only in `.env.example`; never commit values. Register the secrets vi
 ## 8. Authentication (v1)
 
 ```ts
-// lib/auth.ts (concept)
-import { timingSafeEqual } from "node:crypto";
-
-export function verifyToken(req: Request, bearerToken: string | undefined) {
-  if (!bearerToken) return undefined;            // unauthenticated
-  const expected = process.env.AI_RELAY_AUTH_TOKEN;
-  if (!expected) return undefined;                // fail-closed
-  const a = Buffer.from(bearerToken);
+// packages/ai-relay/src/auth.ts (concept)
+export function verifyBearer(token: string, expected: string): boolean {
+  if (token.length !== expected.length) return false;
+  // Manual XOR-OR loop instead of node:crypto.timingSafeEqual for
+  // Workers compatibility (nodejs_compat flag not required).
+  const a = Buffer.from(token);
   const b = Buffer.from(expected);
-  if (a.length !== b.length) return undefined;
-  if (!timingSafeEqual(a, b)) return undefined;
-  return { clientId: "shared-secret", scopes: ["openai:chat"] };
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= (a[i] ?? 0) ^ (b[i] ?? 0);
+  return diff === 0;
 }
 ```
 
@@ -345,12 +346,12 @@ On unauthenticated requests, `mcp-handler` automatically responds with 401 + `WW
 ## 9. Security — v1 minimum set
 
 - Never echo `AI_RELAY_API_KEY` in responses, logs, or error messages.
-- Always compare bearer tokens with `timingSafeEqual`.
+- Compare bearer tokens in constant time (XOR-OR accumulator — see `packages/ai-relay/src/auth.ts`). Do not use `===`.
 - All tool inputs must be strictly validated with zod (use `.strict()`).
-- `max_tokens` accepts the caller's value but is clamped to the server ceiling.
+- `max_tokens` is forwarded as-is — no server-side ceiling is applied.
 - `console` logs may include only metadata (model, token counts, latency, status). **Never log prompt/response bodies at default/info levels.**
 - **`--verbose` carve-out**: when explicitly enabled via `--verbose` flag or `AI_RELAY_VERBOSE=1`, the stderr trace MAY emit full request/response bodies (tool arguments, accumulated assistant text, OpenAI HTTP body). Secrets — API keys, bearer tokens, `Authorization` header values, and env vars whose names match `*_KEY`/`*_TOKEN` — remain redacted via `redactSecret()`. The verbose stream is operator-only diagnostic output: never persist it to shared logging, PR comments, or git. See [CLAUDE.md §4](../CLAUDE.md#4-coding-conventions-repo-specific) for the operational policy.
-- Container images run as a non-root `app` user (uid 1001); orchestrators should not override with root.
+- Container images run as the distroless `nonroot` user (uid 65532); orchestrators should not override with root.
 - The published image is private by default — flip to public via Settings → Packages → ai-relay only when ready.
 
 ### Not included in v1 (intentional)
@@ -368,7 +369,7 @@ These items are listed as v2 candidates in §11.
 
 | Layer | Tools | Scope |
 |---|---|---|
-| Unit (SDK) | vitest + msw, run inside `packages/ai-relay/` | `verifyBearer`, `parseEnv`, `registerOpenAIChat` factory — input validation, max_tokens clamp, error mapping |
+| Unit (SDK) | vitest + msw, run inside `packages/ai-relay/` | `verifyBearer`, `registerOpenAIChat` factory, `registerAnthropicMessages` factory — input validation, error mapping |
 | Multi-registration | vitest + msw, real `McpServer` | Same server registered against multiple times with different `name` + `apiKey` + `baseURL` — each handler routes to its own upstream with no cross-talk |
 | Integration | vitest, Hono `app.fetch(request)` invoked directly with Web `Request`/`Response` | Bearer auth (present/missing/invalid), MCP `tools/list` and `tools/call` JSON-RPC flows, `/healthz` liveness, `AI_RELAY_PORT` validation |
 | Manual E2E | MCP Inspector | Locally run `pnpm dev` → `npx @modelcontextprotocol/inspector` → Streamable HTTP, connect to `http://localhost:8787/api/mcp` |
@@ -398,7 +399,7 @@ These policies govern how the SDK expands beyond a single provider. They are loa
 
 `AI_RELAY_*` env keys retain stable names regardless of which provider is in use. Their meaning is **derived from the provider passed at invocation**:
 
-- `ai-relay openai`     → `AI_RELAY_API_KEY` is the OpenAI key, `AI_RELAY_MODEL` is an OpenAI model id (`gpt-5-mini`).
+- `ai-relay openai`     → `AI_RELAY_API_KEY` is the OpenAI key, `AI_RELAY_MODEL` is an OpenAI model id (`gpt-4o-mini`).
 - `ai-relay anthropic`  → same keys, interpreted as Anthropic (`claude-sonnet-4-6`, …).
 - `ai-relay google`     → same keys, interpreted as Gemini (`gemini-2.5-pro`).
 

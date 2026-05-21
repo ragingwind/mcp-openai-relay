@@ -99,7 +99,6 @@ Prints a single tool result as JSON on stdout, exits. Input is a positional argu
 
 ```bash
 ai-relay openai chat-completions -m gpt-4o-mini "ping"
-ai-relay openai chat-completions --model gpt-4o-mini -s "be terse" "explain TLS"
 ai-relay openai chat-completions -m gpt-4o --temperature 0.2 \
   '{"messages":[{"role":"user","content":"ping"}]}'
 ai-relay openai chat-completions -m gpt-4o-mini --base-url https://my-azure.openai.azure.com/v1 "ping"
@@ -111,7 +110,6 @@ echo '{"messages":[…]}' | ai-relay openai chat-completions -m gpt-4o-mini
 | Flag | Purpose |
 |---|---|
 | `-m, --model <id>` | Model id (e.g. `gpt-4o-mini`) — required (flag or `AI_RELAY_MODEL`) |
-| `-s, --system <text>` | System message prepended to plain-text input |
 | `--api-key <key>` | Override `AI_RELAY_API_KEY` |
 | `--base-url <url>` | Override `AI_RELAY_BASE_URL` |
 | `--max-tokens <n>` | Forwarded upstream as `max_tokens` (or `AI_RELAY_MAX_TOKENS`) |
@@ -122,7 +120,7 @@ echo '{"messages":[…]}' | ai-relay openai chat-completions -m gpt-4o-mini
 | `--env <path>` | Load `AI_RELAY_*` from a dotenv file |
 | `-v, --verbose` | Trace stages to stderr (also: `AI_RELAY_VERBOSE=1`) |
 
-Verbose mode prints `argv`, `parsed-flags`, `loaded-config`, `openai-request`, `result`, etc. to stderr. Secrets are length-redacted; response body text never leaks to stderr.
+Verbose mode prints `argv`, `parsed-flags`, `loaded-config`, `openai-http-request`, `openai-stream-start`, `result`, etc. to stderr. Secrets are redacted; the full assistant response text is included in the `openai-stream-end` event — treat this stream as sensitive.
 
 ---
 
@@ -336,7 +334,6 @@ await server.connect(new StdioServerTransport());
 | `@modelcontextprotocol/sdk` | `^1.26` |
 | `openai` (optional) | `^6` |
 | `@anthropic-ai/sdk` (optional) | `^0.96.0` |
-| `mcp-handler` (optional) | `^1.1` |
 
 ESM-only (`"type": "module"`). Only `node:` import is `node:async_hooks`.
 

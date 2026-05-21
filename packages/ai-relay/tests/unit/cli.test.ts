@@ -37,24 +37,7 @@ describe("parseArgv — basic shape", () => {
     expect(out.flags.model).toBe("gpt-4o-mini");
   });
 
-  it("P6: --system value preserved verbatim and supports multi-word", () => {
-    const out = parseArgv(["openai", "chat-completions", "-s", "be terse and concise", "hi"]);
-    expect(out.flags.system).toBe("be terse and concise");
-  });
-
-  it("P7: long --system also accepted", () => {
-    const out = parseArgv(["openai", "chat-completions", "--system", "be terse", "hi"]);
-    expect(out.flags.system).toBe("be terse");
-  });
-
-  it("P8: --key=value and --key value are equivalent", () => {
-    const a = parseArgv(["openai", "chat-completions", "--system=be terse", "hi"]);
-    const b = parseArgv(["openai", "chat-completions", "--system", "be terse", "hi"]);
-    expect(a.flags.system).toBe("be terse");
-    expect(b.flags.system).toBe("be terse");
-  });
-
-  it("P9: numeric flags (--max-tokens, --timeout) parse to integers", () => {
+  it("P6: numeric flags (--max-tokens, --timeout) parse to integers", () => {
     const out = parseArgv([
       "openai",
       "chat-completions",
@@ -87,10 +70,9 @@ describe("parseArgv — basic shape", () => {
     expect(out.flags["base-url"]).toBe("https://example.test/v1");
   });
 
-  it("P12: -m and -s combine cleanly", () => {
-    const out = parseArgv(["openai", "chat-completions", "-m", "gpt-4o", "-s", "be terse", "hi"]);
+  it("P12: -m sets model", () => {
+    const out = parseArgv(["openai", "chat-completions", "-m", "gpt-4o", "hi"]);
     expect(out.flags.model).toBe("gpt-4o");
-    expect(out.flags.system).toBe("be terse");
     expect(out.positional).toBe("hi");
   });
 });

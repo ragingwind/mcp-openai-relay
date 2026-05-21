@@ -90,9 +90,9 @@ npx ai-relay openai chat-completions -m gpt-4o-mini "ping"
 npx ai-relay openai chat-completions -m gpt-4o-mini \
   '{"messages":[{"role":"user","content":"ping"}]}'
 
-# Stdin pipe + system prompt + sampling override
+# Stdin pipe + sampling override
 echo "explain TLS in 2 sentences" \
-  | npx ai-relay openai chat-completions -m gpt-4o-mini --temperature 0.2 -s "be terse"
+  | npx ai-relay openai chat-completions -m gpt-4o-mini --temperature 0.2
 
 # Azure OpenAI / vLLM / Ollama / AI Gateway — any OpenAI-compatible endpoint
 npx ai-relay openai chat-completions -m gpt-4o-mini \

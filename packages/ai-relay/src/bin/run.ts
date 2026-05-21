@@ -47,7 +47,6 @@ Required:
   -m, --model <id>        Upstream model id (or set AI_RELAY_MODEL)
 
 Flags:
-  -s, --system <text>     System message prepended to plain-text input
       --api-key <key>     Upstream API key (overrides AI_RELAY_API_KEY)
       --base-url <url>    Upstream base URL (overrides AI_RELAY_BASE_URL)
       --max-tokens <n>    Max tokens forwarded upstream (or AI_RELAY_MAX_TOKENS)
@@ -62,7 +61,6 @@ Flags:
 
 Examples:
   ai-relay openai chat-completions -m gpt-4o-mini "ping"
-  ai-relay openai chat-completions --model gpt-4o-mini -s "be terse" "explain TLS"
   ai-relay openai chat-completions -m gpt-4o-mini --temperature 0.2 "ping"
   AI_RELAY_MODEL=gpt-4o-mini ai-relay openai chat-completions "ping"
   echo '{"messages":[…]}' | ai-relay openai chat-completions -m gpt-4o-mini
@@ -153,9 +151,7 @@ export async function run(argv: readonly string[], io: RunIO): Promise<number> {
 
   let inputObj: Record<string, unknown>;
   try {
-    inputObj = coerceInput(rawInput, tool, {
-      ...(parsed.flags.system !== undefined ? { system: parsed.flags.system } : {}),
-    });
+    inputObj = coerceInput(rawInput, tool);
   } catch (e) {
     io.stderr.write(`${(e as Error).message}\n`);
     return 2;
@@ -266,11 +262,7 @@ function isJsonInput(raw: string): boolean {
   return first === "{" || first === "[";
 }
 
-function coerceInput(
-  raw: string,
-  tool: AnyTool,
-  opts: { system?: string },
-): Record<string, unknown> {
+function coerceInput(raw: string, tool: AnyTool): Record<string, unknown> {
   const trimmed = raw.trimStart();
   const first = trimmed[0];
   if (first === "{" || first === "[") {
@@ -291,7 +283,7 @@ function coerceInput(
   if (!tool.desugar) {
     throw new UsageError(`tool ${tool.name} does not accept plain text input; pass JSON`);
   }
-  return tool.desugar(raw, opts);
+  return tool.desugar(raw);
 }
 
 function buildToolConfig(

@@ -228,26 +228,6 @@ describe("run — input handling", () => {
       "input JSON for chat-completions must be an object, not an array",
     );
   });
-
-  it("P3: --system + plain text → system prepended", async () => {
-    let captured: { messages?: { role: string; content: string }[] } | undefined;
-    server.use(
-      http.post(ENDPOINT, async ({ request }) => {
-        captured = (await request.json()) as typeof captured;
-        return happyResponse();
-      }),
-    );
-    const cap = makeIO({ env: { AI_RELAY_API_KEY: "k" } });
-    const code = await run(
-      ["openai", "chat-completions", "-m", "gpt-4o-mini", "-s", "be terse", "hi"],
-      cap.io,
-    );
-    expect(code).toBe(0);
-    expect(captured?.messages).toEqual([
-      { role: "system", content: "be terse" },
-      { role: "user", content: "hi" },
-    ]);
-  });
 });
 
 describe("run — model resolution", () => {

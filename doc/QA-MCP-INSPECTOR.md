@@ -47,11 +47,11 @@ C5** — the three scenarios assertable from a client. Prints an evidence-record
 block ready to paste into the PR. Costs ~$0.0001 per run (one `gpt-4o-mini`
 call).
 
-Inputs (env-only — `verify.mjs` does not parse flags):
+Inputs (env or flag — flag wins):
 
-| env | default | purpose |
-|---|---|---|
-| `MCP_URL`      | `http://localhost:8787/api/mcp` | endpoint (matches Hono `AI_RELAY_PORT` default) |
+| env | flag | default | purpose |
+|---|---|---|---|
+| `MCP_URL` | `--url=<url>` | `http://localhost:8787/api/mcp` | endpoint (matches Hono `AI_RELAY_PORT` default) |
 
 The model used for the C2 happy-path call is whatever `AI_RELAY_MODEL` is set
 to on the running server (the caller schema is `{ messages }` only).
@@ -114,9 +114,9 @@ AI_RELAY_VERBOSE=1 npx @modelcontextprotocol/inspector --cli \
 ```
 
 Secrets (`AI_RELAY_API_KEY`, `--api-key` value) appear only as
-`***redacted(Nchars)***`; OpenAI / MCP response bodies are summarised by
-character count + finish reason. The response body itself never reaches
-stderr.
+`***redacted(Nchars)***`. The full assistant response text is emitted in
+the `openai-stream-end` event — treat the verbose stream as sensitive and
+never persist it to shared logs, PR comments, or git.
 
 ## A. Preparation
 
@@ -182,7 +182,7 @@ upstreams on one server).
 |---|---|---|---|
 | **C1** | Tool list | In Inspector, switch to **Tools** tab | Single tool `chat-completions` is listed. Its input schema is `{ messages: Array<{role, content}> }` only (no `model` / `temperature` / `max_tokens` / `top_p` / `stop` fields) — `.strict()`. |
 | **C2** | Happy path | Click **Run Tool** on `chat-completions`. Inputs: `messages: [{role: "user", content: "ping"}]` (only field accepted). | Response contains accumulated text in `result.content[0].text`. `result.structuredContent.model` matches the server's `AI_RELAY_MODEL`. `result.structuredContent.usage.total_tokens > 0`. `result.isError` is `false`. |
-| **C4** | Server-side sampling override | **Stop** the dev server. Restart with `AI_RELAY_MAX_TOKENS=64 AI_RELAY_TEMPERATURE=0.1 pnpm dev`. Re-run C2. | Response succeeds. Server stderr verbose log (`pnpm dev -v` or `AI_RELAY_VERBOSE=1`) shows `max_tokens: 64`, `temperature: 0.1` in the `openai-request` payload. Caller did not send these fields. |
+| **C4** | Server-side sampling override | **Stop** the dev server. Restart with `AI_RELAY_MAX_TOKENS=64 AI_RELAY_TEMPERATURE=0.1 pnpm dev`. Re-run C2. | Response succeeds. Server stderr verbose log (`pnpm dev -v` or `AI_RELAY_VERBOSE=1`) shows `max_tokens: 64`, `temperature: 0.1` in the `openai-http-request` payload. Caller did not send these fields. |
 | **C5** | Bearer rejection | In Inspector, **Disconnect**, change the Header to `Authorization: Bearer wrong-token`, **Connect** | Connection fails with HTTP 401 + `WWW-Authenticate: Bearer` header. Reconnect with the correct token to continue. |
 | **C6** | Cancellation (manual) | Run C2 with a long prompt (e.g., "Write a 500-word essay about sourdough"). Mid-stream, **Disconnect** in the Inspector | Server logs show the SDK call aborted; OpenAI usage page (refreshed in ~1 minute) does NOT show full output cost. (Imprecise visual confirmation — manual observation only.) |
 | **C7** | Multi-registration *(SDK consumers only)* | On a server that registered `registerOpenAIChat` against two distinct names (e.g. `chat-completions` + `azure_chat` with different `apiKey` + `baseURL` + `model`), open **Tools** then run each one with `{ messages: [...] }`. | `tools/list` returns both entries. Each `tools/call` answers from its own upstream with its own captured `model` (verify via `structuredContent.model` in each response). |
@@ -223,7 +223,7 @@ metadata only per `CLAUDE.md` §4).
 
 ## E. After production deploy
 
-After running [`doc/DEPLOY.md` §3.5 verification checklist](./DEPLOY.md#35-verification-checklist),
+After running [`doc/DEPLOY.md` §3.4 verification checklist](./DEPLOY.md#34-verification-checklist),
 re-run **C1, C2, C5** against the production URL
 (`https://<project>.vercel.app/api/mcp`) using the **production**
 `AI_RELAY_AUTH_TOKEN` and the prod-issued `AI_RELAY_API_KEY`.
@@ -252,5 +252,5 @@ production).
 - [`CLAUDE.md` §3](../CLAUDE.md#3-verify-commands) — evidence policy (`evidence-mode: none`)
 - [`CLAUDE.md` §7](../CLAUDE.md#7-testing--what-goes-where) — test matrix (last row is this procedure)
 - [`CLAUDE.md` §9](../CLAUDE.md#9-frequently-forgotten-items) — Proxy Session Token
-- [`doc/DEPLOY.md` §3](./DEPLOY.md#3-vercel-deployment) — Vercel deployment (this procedure is referenced from §3.5)
-- [`doc/DEPLOY.md` §4](./DEPLOY.md#4-docker-self-hosted) — Docker deployment (smoke flow uses `pnpm inspect`)
+- [`doc/DEPLOY.md` §3](./DEPLOY.md#3-docker-canonical) — Docker deployment (smoke flow uses `pnpm inspect`)
+- [`doc/DEPLOY.md` §4](./DEPLOY.md#4-vercel-community-supported) — Vercel deployment (this procedure is referenced from §3.4)
