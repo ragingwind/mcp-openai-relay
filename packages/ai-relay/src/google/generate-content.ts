@@ -137,9 +137,6 @@ export function mapGoogleError(err: unknown): MappedError {
 
     if (status === 400) {
       const body = err.message ?? "";
-      // Gemini wraps the API JSON body in `error.message`. Detect the
-      // `INVALID_ARGUMENT` status + "context" hint without parsing the
-      // unstructured string strictly.
       const isInvalidArgument =
         /"status"\s*:\s*"INVALID_ARGUMENT"/i.test(body) || /INVALID_ARGUMENT/.test(body);
       if (isInvalidArgument && /context/i.test(body)) {
@@ -155,8 +152,33 @@ export function mapGoogleError(err: unknown): MappedError {
     return { code: "bad_request", message: "Bad request" };
   }
 
-  // Aborted requests surface as DOMException("AbortError") or TypeError
-  // ("fetch failed") from undici. Both fall through to upstream_error.
+  // With retryOptions set, @google/genai's apiCall throws plain Error /
+  // AbortError with statusText embedded in the message. Status code and
+  // response body are not retained, so 400-context_length cannot be
+  // distinguished from generic 400.
+  if (err instanceof Error) {
+    const msg = err.message;
+    if (msg.includes("Too Many Requests")) {
+      return { code: "rate_limited", message: "Rate limited by upstream" };
+    }
+    if (msg.includes("Unauthorized") || msg.includes("Forbidden")) {
+      return { code: "auth", message: "Authentication failed" };
+    }
+    if (msg.includes("Bad Request") || msg.includes("INVALID_ARGUMENT")) {
+      return { code: "bad_request", message: "Bad request" };
+    }
+    if (
+      msg.includes("Internal Server Error") ||
+      msg.includes("Service Unavailable") ||
+      msg.includes("Bad Gateway") ||
+      msg.includes("Gateway Timeout") ||
+      msg.includes("Request Timeout") ||
+      msg.includes("Retryable HTTP Error")
+    ) {
+      return { code: "upstream_error", message: "Upstream server error" };
+    }
+  }
+
   return { code: "upstream_error", message: "Network or unknown error" };
 }
 

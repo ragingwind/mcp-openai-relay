@@ -22,13 +22,15 @@ export interface CreatedGoogleClient {
 }
 
 export function createGoogleClient(config: GoogleClientConfig): CreatedGoogleClient {
-  const httpOptions: Record<string, unknown> = {};
+  const httpOptions: Record<string, unknown> = {
+    retryOptions: { attempts: 1 },
+  };
   if (config.baseURL) httpOptions.baseUrl = config.baseURL;
   if (config.requestTimeoutMs !== undefined) httpOptions.timeout = config.requestTimeoutMs;
 
   const client = new GoogleGenAI({
     apiKey: config.apiKey,
-    ...(Object.keys(httpOptions).length > 0 ? { httpOptions } : {}),
+    httpOptions,
   });
 
   return { client };

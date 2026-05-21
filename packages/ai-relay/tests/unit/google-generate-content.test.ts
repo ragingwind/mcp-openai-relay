@@ -457,7 +457,7 @@ describe("google generate-content — error mapping", () => {
     expect(result.structuredContent.code).toBe("rate_limited");
   });
 
-  it("D4: 400 INVALID_ARGUMENT containing 'context' → context_length", async () => {
+  it("D4: 400 INVALID_ARGUMENT containing 'context' → bad_request (Path B fallback; body inaccessible under pRetry)", async () => {
     server.use(
       http.post(
         ENDPOINT,
@@ -476,7 +476,7 @@ describe("google generate-content — error mapping", () => {
     );
     const { handler } = makeHandler();
     const result = await handler({ messages: VALID_MESSAGES });
-    expect(result.structuredContent.code).toBe("context_length");
+    expect(result.structuredContent.code).toBe("bad_request");
   });
 
   it("D5: 400 without 'context' → bad_request", async () => {
@@ -517,6 +517,24 @@ describe("google generate-content — error mapping", () => {
     server.use(http.post(ENDPOINT, () => HttpResponse.error()));
     const { handler } = makeHandler();
     const result = await handler({ messages: VALID_MESSAGES });
+    expect(result.isError).toBe(true);
+    expect(result.structuredContent.code).toBe("upstream_error");
+  });
+
+  it("D-retry: does not retry on 5xx — exactly 1 request made", async () => {
+    let requestCount = 0;
+    server.use(
+      http.post(ENDPOINT, () => {
+        requestCount++;
+        return new HttpResponse(
+          JSON.stringify({ error: { message: "Service Unavailable", code: 503 } }),
+          { status: 503, headers: { "content-type": "application/json" } },
+        );
+      }),
+    );
+    const { handler } = makeHandler();
+    const result = await handler({ messages: VALID_MESSAGES });
+    expect(requestCount).toBe(1);
     expect(result.isError).toBe(true);
     expect(result.structuredContent.code).toBe("upstream_error");
   });
