@@ -1,6 +1,6 @@
 # ai-relay
 
-> An MCP relay that exposes OpenAI Chat Completions (and any OpenAI-compatible upstream) **or** Anthropic Messages as a Model Context Protocol tool.
+> An MCP relay that exposes OpenAI (Chat Completions + Responses) and Anthropic Messages as Model Context Protocol tools.
 
 > 한국어: [README.ko.md](./README.ko.md)
 
@@ -8,10 +8,10 @@
 
 ## Providers
 
-| Provider | CLI / bin | SDK subpath | Notes |
-|---|---|---|---|
-| OpenAI Chat Completions | `ai-relay openai` (MCP) / `ai-relay openai chat-completions` (one-shot CLI) | [`ai-relay/openai`](./packages/ai-relay/README.md) | Compatible with any OpenAI-shaped upstream: OpenAI, Azure, vLLM, Ollama, OpenRouter, AI Gateway |
-| Anthropic Messages | `ai-relay anthropic` (MCP) / `ai-relay anthropic messages` (one-shot CLI) | [`ai-relay/anthropic`](./packages/ai-relay/README.md#anthropic-messages) | `max_tokens` defaults to 1024; `temperature` range 0..1 |
+| Provider | Tools | CLI / bin | SDK subpath | Notes |
+|---|---|---|---|---|
+| OpenAI | `chat-completions`, `responses` | `ai-relay openai` (MCP, mounts both tools) / `ai-relay openai chat-completions` / `ai-relay openai responses` (one-shot CLI) | [`ai-relay/openai`](./packages/ai-relay/README.md) | `chat-completions` is compatible with any OpenAI-shaped upstream (OpenAI, Azure, vLLM, Ollama, OpenRouter, AI Gateway); `responses` targets OpenAI Responses-capable models (`gpt-5`, `o3`, …) and supports `AI_RELAY_REASONING_EFFORT` |
+| Anthropic | `messages` | `ai-relay anthropic` (MCP) / `ai-relay anthropic messages` (one-shot CLI) | [`ai-relay/anthropic`](./packages/ai-relay/README.md#anthropic-messages) | `max_tokens` defaults to 1024; `temperature` range 0..1 |
 
 > A deployed process MUST run a single provider at a time (ADR D8 in [`doc/ARCHITECTURE.md`](./doc/ARCHITECTURE.md)). Run two ai-relay processes side-by-side to expose both providers to one MCP host.
 

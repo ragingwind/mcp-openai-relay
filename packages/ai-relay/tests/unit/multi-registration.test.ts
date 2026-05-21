@@ -12,6 +12,7 @@ import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { registerAnthropicMessages } from "../../src/anthropic/messages.js";
 import { makeOpenAIChatHandler, registerOpenAIChat } from "../../src/openai/chat.js";
+import { makeOpenAIResponsesHandler, registerOpenAIResponses } from "../../src/openai/responses.js";
 
 const mswServer = setupServer();
 beforeAll(() => mswServer.listen({ onUnhandledRequest: "error" }));
@@ -42,6 +43,32 @@ function sseResponse(text: string) {
     sseStream([JSON.stringify({ choices: [{ delta: { content: text }, finish_reason: "stop" }] })]),
     { headers: { "content-type": "text/event-stream" } },
   );
+}
+
+function responsesSSEResponse(text: string) {
+  const enc = new TextEncoder();
+  const body = new ReadableStream({
+    start(c) {
+      c.enqueue(
+        enc.encode(
+          `event: response.output_text.delta\ndata: ${JSON.stringify({
+            type: "response.output_text.delta",
+            delta: text,
+          })}\n\n`,
+        ),
+      );
+      c.enqueue(
+        enc.encode(
+          `event: response.completed\ndata: ${JSON.stringify({
+            type: "response.completed",
+            response: { status: "completed" },
+          })}\n\n`,
+        ),
+      );
+      c.close();
+    },
+  });
+  return new HttpResponse(body, { headers: { "content-type": "text/event-stream" } });
 }
 
 describe("registerOpenAIChat — multi-registration on one McpServer", () => {
@@ -231,5 +258,62 @@ describe("makeOpenAIChatHandler — closure isolation across handlers", () => {
     expect(resA.structuredContent.code).toBe("upstream_error");
     expect(resB.isError).toBe(false);
     expect(resB.content[0]?.text).toBe("done-b");
+  });
+});
+
+describe("registerOpenAIChat + registerOpenAIResponses — provider-one API-many", () => {
+  it("P3: registers both tools on same server without throwing", () => {
+    const server = new McpServer({ name: "openai-multi-api-test", version: "0.0.1" });
+    expect(() => {
+      registerOpenAIChat(server, {
+        name: "chat-completions",
+        apiKey: "key-openai",
+        model: VALID_MODEL,
+      });
+      registerOpenAIResponses(server, {
+        name: "responses",
+        apiKey: "key-openai",
+        model: VALID_MODEL,
+      });
+    }).not.toThrow();
+  });
+
+  it("P3: distinct tool names — concurrent calls do not cross-talk", async () => {
+    let chatHits = 0;
+    let responsesHits = 0;
+
+    mswServer.use(
+      http.post("https://chat-host.example.com/v1/chat/completions", () => {
+        chatHits++;
+        return sseResponse("from-chat");
+      }),
+      http.post("https://responses-host.example.com/v1/responses", () => {
+        responsesHits++;
+        return responsesSSEResponse("from-responses");
+      }),
+    );
+
+    const chat = makeOpenAIChatHandler({
+      apiKey: "key-chat",
+      baseURL: "https://chat-host.example.com/v1",
+      model: VALID_MODEL,
+    });
+    const responses = makeOpenAIResponsesHandler({
+      apiKey: "key-responses",
+      baseURL: "https://responses-host.example.com/v1",
+      model: VALID_MODEL,
+    });
+
+    const [chatResult, responsesResult] = await Promise.all([
+      chat.handler({ messages: VALID_MESSAGES }),
+      responses.handler({ messages: VALID_MESSAGES }),
+    ]);
+
+    expect(chatResult.isError).toBe(false);
+    expect(chatResult.content[0]?.text).toBe("from-chat");
+    expect(responsesResult.isError).toBe(false);
+    expect(responsesResult.content[0]?.text).toBe("from-responses");
+    expect(chatHits).toBe(1);
+    expect(responsesHits).toBe(1);
   });
 });

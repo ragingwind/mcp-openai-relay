@@ -50,20 +50,37 @@ AI_RELAY_API_KEY=sk-ant-... npx ai-relay anthropic messages -m claude-sonnet-4-5
 }
 ```
 
-**3. SDK embed** — `registerOpenAIChat(server, config)` or `registerAnthropicMessages(server, config)`:
+**3. SDK embed** — `registerOpenAIChat(server, config)`, `registerOpenAIResponses(server, config)`, or `registerAnthropicMessages(server, config)`:
 
 ```ts
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { registerOpenAIChat } from "ai-relay/openai";
+import { registerOpenAIChat, registerOpenAIResponses } from "ai-relay/openai";
 
 const server = new McpServer({ name: "my-relay", version: "0.1.0" });
 registerOpenAIChat(server, {
   apiKey: process.env.AI_RELAY_API_KEY!,
   model: "gpt-4o-mini",
 });
+registerOpenAIResponses(server, {
+  apiKey: process.env.AI_RELAY_API_KEY!,
+  model: "gpt-5",
+  reasoning_effort: "medium",
+});
 await server.connect(new StdioServerTransport());
 ```
+
+### Chat vs Responses: when to use each
+
+| | `chat-completions` (`./openai` → `registerOpenAIChat`) | `responses` (`./openai` → `registerOpenAIResponses`) |
+|---|---|---|
+| Endpoint | `/v1/chat/completions` | `/v1/responses` |
+| Models | OpenAI Chat-compatible (`gpt-4o`, `gpt-4o-mini`, …) | OpenAI Responses-capable (`gpt-5`, `o3`, …) |
+| Compatible upstreams | OpenAI, Azure OpenAI, vLLM, Ollama, OpenRouter, AI Gateway | OpenAI proper (and any upstream implementing `/v1/responses`) |
+| Reasoning | not surfaced | optional `reasoning_effort: low | medium | high` → `reasoning.effort` |
+| Result `structuredContent` | `model`, `usage`, `finish_reason` | adds `reasoning` (omitted when empty) |
+
+Pick `responses` when targeting a reasoning model and you want to see the chain-of-thought summary; otherwise `chat-completions` is the most portable choice.
 
 ```ts
 import { registerAnthropicMessages } from "ai-relay/anthropic";
@@ -126,7 +143,7 @@ Verbose mode prints `argv`, `parsed-flags`, `loaded-config`, `openai-http-reques
 
 ## 2. stdio MCP server (`ai-relay`)
 
-Long-lived stdio MCP server. The `<provider>` positional (today: `openai`) selects which upstream is mounted; all of that provider's tools are then registered. Today: `openai` mounts `chat-completions`.
+Long-lived stdio MCP server. The `<provider>` positional (today: `openai`, `anthropic`) selects which upstream is mounted; all of that provider's tools are then registered. The `openai` provider mounts both `chat-completions` and `responses`; `anthropic` mounts `messages`.
 
 Project-local `.mcp.json` with an absolute bin path:
 

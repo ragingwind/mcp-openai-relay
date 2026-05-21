@@ -15,6 +15,7 @@ export interface AnyProviderConfig {
   max_tokens?: number;
   top_p?: number;
   stop?: string | string[];
+  reasoning_effort?: "low" | "medium" | "high";
   requestTimeoutMs?: number;
   logger?: VerboseLogger;
 }
@@ -43,6 +44,7 @@ const loaders: Record<ProviderName, Loader> = {
       registerOnServer: mod.registerOpenAIProvider as ProviderEntry["registerOnServer"],
       tools: {
         "chat-completions": mod.openAIChatTool as AnyTool,
+        responses: mod.openAIResponsesTool as AnyTool,
       },
     };
   },

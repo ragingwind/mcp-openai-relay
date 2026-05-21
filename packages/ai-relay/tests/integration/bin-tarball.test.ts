@@ -431,7 +431,7 @@ describe("ai-relay bin — installed tarball, MCP stdio mode (openai provider po
     expect(initRes?.capabilities?.tools).toBeDefined();
   });
 
-  it("A2: tools/list returns chat-completions with input schema (messages-only)", async () => {
+  it("A2: tools/list returns chat-completions + responses with input schema (messages-only)", async () => {
     const r = await runMcpSession(
       [initRequest, initializedNotification, { jsonrpc: "2.0", id: 2, method: "tools/list" }],
       {
@@ -447,10 +447,13 @@ describe("ai-relay bin — installed tarball, MCP stdio mode (openai provider po
         inputSchema?: { required?: string[]; properties?: Record<string, unknown> };
       }>;
     };
-    expect(listRes?.tools).toHaveLength(1);
-    expect(listRes?.tools?.[0]?.name).toBe("chat-completions");
-    expect(listRes?.tools?.[0]?.inputSchema?.required).toEqual(["messages"]);
-    expect(listRes?.tools?.[0]?.inputSchema?.properties).not.toHaveProperty("model");
+    expect(listRes?.tools).toHaveLength(2);
+    const names = (listRes?.tools ?? []).map((t) => t.name).sort();
+    expect(names).toEqual(["chat-completions", "responses"]);
+    for (const tool of listRes?.tools ?? []) {
+      expect(tool.inputSchema?.required).toEqual(["messages"]);
+      expect(tool.inputSchema?.properties).not.toHaveProperty("model");
+    }
   });
 
   it("B1: tools/call chat-completions forwards messages and returns assistant text", async () => {

@@ -20,7 +20,7 @@ sources in the [Reference index](#reference-index).
 | # | Decision | Rationale (summary) |
 |---|---|---|
 | D1 | **Hono `^4` + `@hono/node-server`** with a single `/api/mcp` route + `/healthz` liveness | Web-Request native, ~30 KB runtime, plays directly with `mcp-handler`'s `(Request) => Promise<Response>` signature without a Next.js dependency |
-| D2 | **OpenAI Chat Completions API only** (`/v1/chat/completions`) | Most ubiquitous and stable; Responses API, embeddings, and image tools belong to v2 |
+| D2 | **OpenAI Chat Completions + Responses APIs** (`/v1/chat/completions`, `/v1/responses`) | Chat is the most ubiquitous and stable surface; Responses unlocks reasoning models (`gpt-5`, `o3`) and is mounted alongside Chat under the same provider. Embeddings and image tools belong to v2. |
 | D3 | **Bearer shared-secret auth** (`withMcpAuth`) | Assumes single-user / small-scale use. OAuth 2.1 belongs to v2 |
 | D4 | **Simple architecture** — no observability, rate limiting, or external KV | Observability comes later; rate limiting and budget caps belong to v2 |
 | D5 | **Node.js 20.x + multi-arch Docker** (`ghcr.io/ragingwind/ai-relay`, amd64+arm64) | Self-hosted; portable across cloud + on-prem. Vercel target moved to `examples/vercel/` (community-supported) |
@@ -132,6 +132,42 @@ The caller-facing surface is intentionally minimal — `model` and all sampling 
 **Notes**:
 - `tool_choice` / `tools` parameters are not supported in v1 — tool calls are not forwarded.
 - If a function/tool call appears in the response, it is not serialized to text; instead the tool surfaces `finish_reason: "tool_calls"` so the host LLM can decide what to do.
+
+### `responses` (OpenAI Responses API)
+
+Invokes the OpenAI Responses API once and returns the accumulated assistant text. Mounted alongside `chat-completions` whenever the OpenAI provider is registered (via `registerOpenAIProvider`) or explicitly via `registerOpenAIResponses`.
+
+**Input schema (Zod, `.strict()`)** — identical to `chat-completions`. The SDK translates `messages` into the Responses `input` shape (`{role, content: [{type: "input_text", text}]}`) internally.
+
+**Server-side configuration (`OpenAIResponsesConfig` / `AI_RELAY_*` env)** — same fields as `chat-completions` plus:
+
+| Field | Env | Required | Notes |
+|---|---|---|---|
+| `reasoning_effort` | `AI_RELAY_REASONING_EFFORT` | ❌ | `low` \| `medium` \| `high`; forwarded as `reasoning: { effort }` to the upstream. Only meaningful for reasoning models (gpt-5 / o-series). |
+| `max_tokens` | `AI_RELAY_MAX_TOKENS` | ❌ | Forwarded upstream as `max_output_tokens` (the Responses API key). |
+| `stop` | `AI_RELAY_STOP` | ❌ | Accepted for config parity; the Responses API does not surface a `stop` parameter, so this is not forwarded upstream. |
+
+**Output schema** — same as `chat-completions` plus an optional `reasoning` field:
+
+```ts
+{
+  content: [{ type: "text", text: string }],
+  structuredContent: {
+    model: string,
+    usage: { prompt_tokens: number, completion_tokens: number, total_tokens: number },
+    finish_reason: string,       // mapped from upstream `response.status`
+    reasoning?: string,          // accumulated `response.reasoning_summary_text.delta`; omitted when empty
+    code?: string,
+    retryAfter?: number
+  }
+}
+```
+
+Stream event handling:
+- `response.output_text.delta` → accumulated into `content[0].text`
+- `response.reasoning_summary_text.delta` → accumulated into `structuredContent.reasoning`
+- `response.completed` → final `usage` (`input_tokens`/`output_tokens` → `prompt_tokens`/`completion_tokens`) and `status` → `finish_reason`
+- All other event types are ignored.
 
 ### `messages` (Anthropic provider)
 
@@ -380,7 +416,6 @@ Principle: **mock only the OpenAI HTTP boundary** (MSW). Never mock the SDK modu
 
 ## 11. Future work (v2+ backlog)
 
-- **Responses API support** (add a `responses` tool — see §12.2 naming policy)
 - **Embeddings / image** tools
 - **OAuth 2.1** authentication (swap the `withMcpAuth` token verifier)
 - **Rate limiting** — Upstash Ratelimit (Edge Middleware, IP + token two-tier)
