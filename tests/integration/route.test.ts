@@ -212,37 +212,40 @@ describe("route /api/mcp — bearer auth", () => {
 // =========================================================================
 
 describe("route /api/mcp — tools/list", () => {
-  // B4: returns exactly one tool, name "chat-completions"
-  it("P1: exposes a single tool named chat-completions", async () => {
+  // B4: exposes both OpenAI tools (chat-completions + responses)
+  it("P1: exposes chat-completions and responses tools", async () => {
     const res = await app.fetch(makeListRequest());
     expect(res.status).toBe(200);
     const envelope = await readJsonRpcResponse(res);
     const tools = (envelope.result?.tools ?? []) as Array<{ name: string }>;
-    expect(tools).toHaveLength(1);
-    expect(tools[0]?.name).toBe("chat-completions");
+    const names = tools.map((t) => t.name).sort();
+    expect(names).toEqual(["chat-completions", "responses"]);
   });
 
   // B5: tools/list response includes the input schema.
   // The SDK serializes Zod shapes as JSON Schema. We only assert the shape's
-  // top-level structure (object, properties.model, required) — not the full
-  // serialization, which is an SDK implementation detail.
-  it("P2: tools/list response exposes only `messages` in the input schema", async () => {
+  // top-level structure (object, properties.messages) — not the full
+  // serialization, which is an SDK implementation detail. Both tools share
+  // the same caller-facing { messages } schema.
+  it("P2: each tool's input schema exposes only `messages`", async () => {
     const res = await app.fetch(makeListRequest());
     const envelope = await readJsonRpcResponse(res);
     const tools = (envelope.result?.tools ?? []) as Array<{
       name: string;
       inputSchema?: { type?: string; properties?: Record<string, unknown>; required?: string[] };
     }>;
-    const schema = tools[0]?.inputSchema;
-    expect(schema).toBeDefined();
-    expect(schema?.type).toBe("object");
-    expect(schema?.properties).toBeDefined();
-    expect(schema?.properties).toHaveProperty("messages");
-    expect(schema?.properties).not.toHaveProperty("model");
-    expect(schema?.properties).not.toHaveProperty("temperature");
-    expect(schema?.properties).not.toHaveProperty("max_tokens");
-    expect(schema?.properties).not.toHaveProperty("top_p");
-    expect(schema?.properties).not.toHaveProperty("stop");
+    for (const tool of tools) {
+      const schema = tool.inputSchema;
+      expect(schema, `${tool.name} inputSchema`).toBeDefined();
+      expect(schema?.type).toBe("object");
+      expect(schema?.properties).toBeDefined();
+      expect(schema?.properties).toHaveProperty("messages");
+      expect(schema?.properties).not.toHaveProperty("model");
+      expect(schema?.properties).not.toHaveProperty("temperature");
+      expect(schema?.properties).not.toHaveProperty("max_tokens");
+      expect(schema?.properties).not.toHaveProperty("top_p");
+      expect(schema?.properties).not.toHaveProperty("stop");
+    }
   });
 });
 
