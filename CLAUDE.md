@@ -12,9 +12,9 @@ working in this repository. **It overrides the global rules at `~/.claude/CLAUDE
 
 ## 1. One-line summary
 
-A relay server that exposes OpenAI Chat Completions as an MCP (Model Context Protocol) tool —
-shipped as a Hono HTTP server packaged as a multi-arch Docker image
-(`ghcr.io/ragingwind/ai-relay`), Bearer authentication, single tool `chat-completions` in v1.
+A relay server that exposes upstream LLM APIs (OpenAI `chat-completions`, Anthropic `messages`)
+as MCP (Model Context Protocol) tools — shipped as a Hono HTTP server packaged as a multi-arch
+Docker image (`ghcr.io/ragingwind/ai-relay`), Bearer authentication.
 
 Full architecture: [`doc/ARCHITECTURE.md`](./doc/ARCHITECTURE.md)
 
@@ -42,7 +42,7 @@ build:    pnpm build         # pnpm -r build (SDK + app)
 typecheck: pnpm typecheck    # tsc --noEmit across SDK + app
 lint:     pnpm lint          # biome check .
 test:     pnpm test          # vitest run
-test:unit: pnpm test:unit    # vitest run packages/ai-relay/tests/unit
+test:unit: pnpm test:unit    # pnpm --filter ai-relay test (unit + integration + cli tests inside packages/ai-relay/)
 test:integration: pnpm test:integration  # vitest run --project integration
 test:runtime: pnpm test:runtime  # pack tarball + run smoke fixtures (Node/Bun/CJS). Catches "consumer install without peer SDK" failures that vitest workspace-resolution masks.
 dev:      pnpm dev           # Hono dev server (port 8787)
@@ -68,7 +68,7 @@ The following items extend or override the global `core.md`.
 - **Never log OpenAI/MCP response bodies via `console`/logs/error messages at default/info levels** — only metadata (model, token counts, latency, status) is allowed at default output.
 - **Exception — `--verbose` debug stream**: when explicitly enabled via `--verbose` flag or `AI_RELAY_VERBOSE=1`, the stderr trace MAY emit full request/response bodies (assistant text, tool arguments, OpenAI HTTP body). Secrets — API keys, bearer tokens, env values matching `*_KEY` / `*_TOKEN`, and the `Authorization` header value — MUST still be redacted via `redactSecret()`. Operators MUST treat the verbose stderr stream as sensitive: never persist it to shared logging infrastructure, never include it in PR comments or issue evidence, never check it into git.
 - Never expose `AI_RELAY_API_KEY` or `AI_RELAY_AUTH_TOKEN` in plain text in code/tests/docs/commits.
-- Never use `===` to compare bearer tokens — always use `timingSafeEqual` from `node:crypto`.
+- Never use `===` to compare bearer tokens — use the constant-time XOR-OR loop in `packages/ai-relay/src/auth.ts` (`verifyBearer`). Do not replace it with `node:crypto.timingSafeEqual` — the manual loop is intentional for Workers portability (`nodejs_compat` not required).
 - Never add features outside v1 scope (Responses API, OAuth, rate limiting, external KV, observability — see [`doc/ARCHITECTURE.md` §11](./doc/ARCHITECTURE.md#11-future-work-v2-backlog)).
 - Never bump only one of `mcp-handler`/`@modelcontextprotocol/sdk` — the two packages are ABI-coupled (`^1.1`, `^1.26`); upgrade them as a pair.
 
@@ -155,13 +155,12 @@ Details: [`doc/ARCHITECTURE.md` §7](./doc/ARCHITECTURE.md#7-environment-variabl
 | Case | Location | Notes |
 |---|---|---|
 | Tool input zod validation | `packages/ai-relay/tests/unit/chat.test.ts` | Enumerate schema-violation cases |
-| `max_tokens` clamp | `packages/ai-relay/tests/unit/chat.test.ts` | Caller value > ceiling case + injected ceiling override |
 | OpenAI error mapping (401/429/400/5xx) | `packages/ai-relay/tests/unit/chat.test.ts` | Forge responses with MSW |
 | `verifyBearer` constant-time comparison | `packages/ai-relay/tests/unit/auth.test.ts` | Length mismatch, single-byte change, NFC vs NFD |
-| `parseEnv` validation + redaction | `packages/ai-relay/tests/unit/env.test.ts` | Failing-key path included; sentinel values never echoed |
+| `parseEnv` validation + redaction | `tests/integration/app-env.test.ts` | App-private `parseEnv`; failing-key path included; sentinel values never echoed |
 | **Multi-registration** (same server, multiple upstreams) | `packages/ai-relay/tests/unit/multi-registration.test.ts` | Distinct names, no cross-talk, independent cancellation |
 | Bearer auth (present/missing/invalid) | `tests/integration/route.test.ts` | Verify 401 + `WWW-Authenticate` header |
-| `tools/list` JSON-RPC | `tests/integration/route.test.ts` | Confirm a single tool is exposed |
+| `tools/list` JSON-RPC | `tests/integration/route.test.ts` | Confirm registered tools are exposed |
 | `tools/call` happy path | `tests/integration/route.test.ts` | Mock OpenAI with MSW |
 | Stream accumulation → single result | `tests/integration/route.test.ts` | MSW SSE response |
 | MCP Inspector manual verification | Manual (not in CI) | Once before each PR — `pnpm dev` + `npx @modelcontextprotocol/inspector` |
@@ -191,7 +190,7 @@ Principle: **mock only the OpenAI HTTP boundary** (MSW). Never mock the `openai`
 - ghcr first-push setup: after the initial `release-app` run, the maintainer must (a) confirm Settings → Actions → Workflow permissions = "Read and write", and (b) Settings → Packages → ai-relay → Change visibility to public (default is private).
 - If you do not wrap the `/api/mcp` handler with `withMcpAuth`, authentication is not applied — verify this when modifying `app/src/index.ts`.
 - Register `AI_RELAY_API_KEY` with **distinct OpenAI project keys** for Production and Preview, and set a **hard usage cap** in the OpenAI dashboard for each project (v1's cost defense).
-- After `pnpm dev`, when connecting MCP Inspector you must enter the **Proxy Session Token** from the mcp-handler startup log.
+- After `pnpm dev`, when connecting MCP Inspector you must enter the **Proxy Session Token** printed by the `npx @modelcontextprotocol/inspector` CLI on startup (not from the mcp-handler/server log).
 
 ---
 

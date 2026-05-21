@@ -90,9 +90,9 @@ npx ai-relay openai chat-completions -m gpt-4o-mini "ping"
 npx ai-relay openai chat-completions -m gpt-4o-mini \
   '{"messages":[{"role":"user","content":"ping"}]}'
 
-# stdin + 시스템 프롬프트 + 샘플링 오버라이드
+# stdin + 샘플링 오버라이드
 echo "explain TLS in 2 sentences" \
-  | npx ai-relay openai chat-completions -m gpt-4o-mini --temperature 0.2 -s "be terse"
+  | npx ai-relay openai chat-completions -m gpt-4o-mini --temperature 0.2
 
 # Azure OpenAI / vLLM / Ollama / AI Gateway 같은 OpenAI 호환 엔드포인트
 npx ai-relay openai chat-completions -m gpt-4o-mini \

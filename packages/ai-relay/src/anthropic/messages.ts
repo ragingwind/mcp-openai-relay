@@ -271,12 +271,7 @@ export const anthropicMessagesTool: ToolDescriptor<
   provider: "anthropic",
   name: "messages",
   makeHandler: makeAnthropicMessagesHandler,
-  desugar: (plain, opts) => {
-    const messages: Array<{ role: "system" | "user"; content: string }> = [];
-    if (opts.system) messages.push({ role: "system", content: opts.system });
-    messages.push({ role: "user", content: plain });
-    return { messages };
-  },
+  desugar: (plain) => ({ messages: [{ role: "user", content: plain }] }),
 };
 
 // --- internals ------------------------------------------------------------

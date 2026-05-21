@@ -30,8 +30,10 @@ Last updated: see `git log -1 --format=%ad -- COMPATIBILITY.md`.
 |---|---|---|
 | `ai-relay` | `dist/index.js` | `verifyBearer`, `loadConfig`, types |
 | `ai-relay/openai` | `dist/openai/index.js` | `registerOpenAIChat`, `makeOpenAIChatHandler`, `mapOpenAIError`, `createOpenAIClient`, `openAIChatTool` + types |
+| `ai-relay/anthropic` | `dist/anthropic/index.js` | `registerAnthropicMessages`, `makeAnthropicMessagesHandler`, `mapAnthropicError`, `createAnthropicClient`, `anthropicMessagesTool` + types |
 | `ai-relay/env` | `dist/config.js` | `loadConfig` + config types |
 | `ai-relay/auth` | `dist/auth.js` | `verifyBearer` |
+| `ai-relay/logger` | `dist/logger.js` | `createLogger`, logger types |
 
 The root `ai-relay` is intentionally a thin re-export of the common surface.
 Heavier provider-specific code lives under its own subpath.

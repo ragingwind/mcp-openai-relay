@@ -2,7 +2,7 @@
 //
 // Surface: `ai-relay <provider> <tool> [flags] [input]`
 //
-// Long flags: --system -s, --model -m, --api-key, --base-url,
+// Long flags: --model -m, --api-key, --base-url,
 //             --max-tokens, --temperature, --top-p, --stop,
 //             --timeout, --env, --verbose -v,
 //             --help -h, --version -V.
@@ -17,7 +17,6 @@ export class UsageError extends Error {
 }
 
 export interface ParsedFlags {
-  system?: string;
   model?: string;
   "api-key"?: string;
   "base-url"?: string;
@@ -40,7 +39,6 @@ export interface ParsedInvocation {
 }
 
 const VALUE_FLAGS = new Set([
-  "system",
   "model",
   "api-key",
   "base-url",
@@ -55,7 +53,6 @@ const INTEGER_FLAGS = new Set(["max-tokens", "timeout"]);
 const FLOAT_FLAGS = new Set(["temperature", "top-p"]);
 const STRING_ARRAY_FLAGS = new Set(["stop"]);
 const SHORT_TO_LONG: Record<string, string> = {
-  s: "system",
   m: "model",
   h: "help",
   V: "version",
@@ -388,7 +385,6 @@ export function parseMcpArgv(argv: readonly string[]): ParsedMcpInvocation {
 
 export function countPositionals(argv: readonly string[]): number {
   const ALL_VALUE_FLAGS = new Set([
-    "system",
     "model",
     "api-key",
     "base-url",
@@ -399,7 +395,7 @@ export function countPositionals(argv: readonly string[]): number {
     "timeout",
     "env",
   ]);
-  const VALUE_SHORTS = new Set(["s", "m"]);
+  const VALUE_SHORTS = new Set(["m"]);
   let count = 0;
   let pastDash = false;
   for (let i = 0; i < argv.length; i++) {
