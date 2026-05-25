@@ -103,7 +103,15 @@ describe("pack contract — installed-tarball imports", () => {
     );
     execFileSync(
       "npm",
-      ["install", "--no-audit", "--no-fund", tarball, "openai@^6", "@anthropic-ai/sdk@^0.96.0"],
+      [
+        "install",
+        "--no-audit",
+        "--no-fund",
+        tarball,
+        "openai@^6",
+        "@anthropic-ai/sdk@^0.96.0",
+        "@google/genai@^2.0.0",
+      ],
       {
         cwd: installDir,
         stdio: "pipe",
@@ -116,6 +124,7 @@ describe("pack contract — installed-tarball imports", () => {
       import * as auth from "ai-relay/auth";
       import * as openai from "ai-relay/openai";
       import * as anthropic from "ai-relay/anthropic";
+      import * as google from "ai-relay/google";
       const ok =
         typeof root.verifyBearer === "function" &&
         typeof root.loadConfig === "function" &&
@@ -124,7 +133,9 @@ describe("pack contract — installed-tarball imports", () => {
         typeof openai.registerOpenAIChat === "function" &&
         typeof openai.makeOpenAIChatHandler === "function" &&
         typeof anthropic.registerAnthropicMessages === "function" &&
-        typeof anthropic.makeAnthropicMessagesHandler === "function";
+        typeof anthropic.makeAnthropicMessagesHandler === "function" &&
+        typeof google.registerGoogleGenerateContent === "function" &&
+        typeof google.makeGoogleGenerateContentHandler === "function";
       console.log(ok ? "EXPORTS_OK" : "EXPORTS_MISSING");
     `;
     const out = execFileSync("node", ["--input-type=module", "-e", script], {
@@ -156,6 +167,7 @@ describe("pack contract — typecheck under bundler + nodenext", () => {
         tarball,
         "openai@^6",
         "@anthropic-ai/sdk@^0.96.0",
+        "@google/genai@^2.0.0",
         "typescript@^6.0.3",
       ],
       { cwd: tmp, stdio: "pipe" },

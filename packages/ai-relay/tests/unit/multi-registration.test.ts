@@ -11,6 +11,10 @@ import { HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { registerAnthropicMessages } from "../../src/anthropic/messages.js";
+import {
+  makeGoogleGenerateContentHandler,
+  registerGoogleGenerateContent,
+} from "../../src/google/generate-content.js";
 import { makeOpenAIChatHandler, registerOpenAIChat } from "../../src/openai/chat.js";
 import { makeOpenAIResponsesHandler, registerOpenAIResponses } from "../../src/openai/responses.js";
 
@@ -110,6 +114,27 @@ describe("registerOpenAIChat — multi-registration on one McpServer", () => {
         name: "messages",
         apiKey: "key-anthropic",
         model: "claude-sonnet-4-5",
+      });
+    }).not.toThrow();
+  });
+
+  it("P3: registers OpenAI + Anthropic + Google on the same server (three-provider type contract)", () => {
+    const server = new McpServer({ name: "three-provider-test", version: "0.0.1" });
+    expect(() => {
+      registerOpenAIChat(server, {
+        name: "chat-completions",
+        apiKey: "key-openai",
+        model: VALID_MODEL,
+      });
+      registerAnthropicMessages(server, {
+        name: "messages",
+        apiKey: "key-anthropic",
+        model: "claude-sonnet-4-5",
+      });
+      registerGoogleGenerateContent(server, {
+        name: "generate-content",
+        apiKey: "key-google",
+        model: "gemini-2.0-flash",
       });
     }).not.toThrow();
   });
@@ -315,5 +340,75 @@ describe("registerOpenAIChat + registerOpenAIResponses — provider-one API-many
     expect(responsesResult.content[0]?.text).toBe("from-responses");
     expect(chatHits).toBe(1);
     expect(responsesHits).toBe(1);
+  });
+});
+
+describe("makeGoogleGenerateContentHandler — closure isolation across handlers", () => {
+  it("P1: each Google handler routes to its own API key (closure isolation)", async () => {
+    const enc = new TextEncoder();
+    const chunkOk = (text: string): unknown => ({
+      candidates: [
+        {
+          content: { role: "model", parts: [{ text }] },
+          finishReason: "STOP",
+        },
+      ],
+      usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 1, totalTokenCount: 2 },
+    });
+    const sseFor = (text: string) =>
+      new HttpResponse(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(enc.encode(`data: ${JSON.stringify(chunkOk(text))}\r\n\r\n`));
+            controller.close();
+          },
+        }),
+        { headers: { "content-type": "text/event-stream" } },
+      );
+
+    const seenKeys: string[] = [];
+    const captureKey = (request: Request) => {
+      const url = new URL(request.url);
+      const key = url.searchParams.get("key") ?? request.headers.get("x-goog-api-key") ?? "";
+      if (key) seenKeys.push(key);
+    };
+
+    mswServer.use(
+      http.post(
+        "https://gemini-a.example.com/v1beta/models/gemini-2.0-flash:streamGenerateContent",
+        ({ request }) => {
+          captureKey(request);
+          return sseFor("from-a");
+        },
+      ),
+      http.post(
+        "https://gemini-b.example.com/v1beta/models/gemini-2.0-flash:streamGenerateContent",
+        ({ request }) => {
+          captureKey(request);
+          return sseFor("from-b");
+        },
+      ),
+    );
+
+    const a = makeGoogleGenerateContentHandler({
+      apiKey: "key-google-a",
+      baseURL: "https://gemini-a.example.com/",
+      model: "gemini-2.0-flash",
+    });
+    const b = makeGoogleGenerateContentHandler({
+      apiKey: "key-google-b",
+      baseURL: "https://gemini-b.example.com/",
+      model: "gemini-2.0-flash",
+    });
+
+    const ra = await a.handler({ messages: VALID_MESSAGES });
+    const rb = await b.handler({ messages: VALID_MESSAGES });
+
+    expect(ra.isError).toBe(false);
+    expect(rb.isError).toBe(false);
+    expect(ra.content[0]?.text).toBe("from-a");
+    expect(rb.content[0]?.text).toBe("from-b");
+    expect(seenKeys).toContain("key-google-a");
+    expect(seenKeys).toContain("key-google-b");
   });
 });
