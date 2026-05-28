@@ -1,6 +1,6 @@
 {
   "name": "ai-relay",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "Provider-agnostic MCP relay SDK — embed Chat Completions, Anthropic Messages, Google Gemini, and (future) unified-gateway tools in any MCP server.",
   "license": "MIT",
   "author": "Jimmy Moon <ragingwind@gmail.com>",

@@ -8,7 +8,26 @@ this file before upgrading.
 
 ## [Unreleased]
 
-### Changed
+## [0.12.0] — 2026-05-28
+
+### Added
+
+- **OpenAI Responses API tool** under `ai-relay/openai` (`registerOpenAIResponses`,
+  `makeOpenAIResponsesHandler`, `openAIResponsesTool`, `openAIResponsesOutputSchema`,
+  `makeOpenAIResponsesSchema`, `OpenAIResponsesConfig`). Exposes the
+  `/v1/responses` endpoint as an MCP tool named `responses` (default; overridable
+  via `config.name`). Input schema: `{ input }` (string or messages array). Shares
+  the same result shape as `chat-completions`.
+- **Google Gemini provider** under the new `ai-relay/google` subpath
+  (`registerGoogleGenerateContent`, `registerGoogleProvider`,
+  `makeGoogleGenerateContentHandler`, `googleGenerateContentTool`,
+  `makeGoogleGenerateContentSchema`, `createGoogleClient`,
+  `GoogleClientConfig`). MCP tool name defaults to `generate-content`.
+  `registerGoogleProvider` registers both `generate-content` and any future
+  Google tools in one call.
+- `ai-relay google` bin invocation for stdio MCP server mode and one-shot CLI.
+
+### Changed (breaking)
 
 - **`ai-relay-cli` binary removed.** `ai-relay` now auto-dispatches to
   one-shot CLI mode when ≥2 positionals are supplied (`<provider> <tool>`),
